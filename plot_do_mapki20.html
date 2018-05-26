@@ -1,0 +1,1949 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Frameset//PL">
+<html>
+<head>
+ <META HTTP-EQUIV="Content-type" CONTENT="text/html; charset=utf-8">
+ <meta http-equiv="Content-Language" content="pl">
+ <meta name="Author" content="Damian Jabłeka">
+<title>Mapa Nieba</title>
+  <meta name="verify-v1" content="vWGuINwQWmTyWgri24GIXQaSmNS3itAs8Udf2mtIS/0=" />
+  <script type="text/javascript" SRC="BSCSKvizz.js">
+  </script>
+  <script type="text/javascript" SRC="names.js">
+  </script> 
+    <script type="text/javascript" SRC="nazwy.js">
+  </script> 
+     <script type="text/javascript" SRC="rysunki.js">
+  </script> 
+  <script type="text/javascript" SRC="ksiezyc.js">
+  </script>
+    <script type="text/javascript" SRC="dm.js">
+  </script>
+      <script type="text/javascript" SRC="granice.js">
+  </script>
+        <script type="text/javascript" SRC="nazwyg.js">
+  </script>
+          <script type="text/javascript" SRC="kolory.js">
+  </script>
+       <script type="text/javascript" SRC="parametry.js">
+  </script>
+     <script type="text/javascript" SRC="mglawice.js">
+  </script>
+<script type="text/javascript">
+
+
+//ogólnie to zajebiście
+//**zrobione:
+//  ekliptyka eliptyczna super precyzyjna
+//  biały pierscien zakryła rysunki wychodzace na skale
+//  droga mleczna w koncu zadzialala
+//  zwikeszylem kontrast przez potengowanie i zmniejszylem offset  mozna spokojnie plotowac do 5,5mag
+//  linie działają prawie ale już mam dość i jak się zrobi przerywane to jest gites
+//  nowy katalog oparty na Vizzarze z prawidłowymi polozeniami, jasnosciami i  kolorami
+//  nazwy gwiazd ale jest problem z offsetem? 
+//  zrobione śliczne kolory
+//  dogać grupy z id w tagu <g> i \r\n
+//  nazwy gwiazd ok,  --> tak jak ekliptyka
+//  nazwy na ekliptyce, ekliptyka II --> kat dziala jak sie to dobrze przmyslalo   -- to samo do podpisu rownolenizkow i poludnikow
+//  rownolezniki i poludniki podpisne
+// zmana kolorów na obiekt
+// zmiana odwzorowania na jaedną funcke
+// zmiana odwzorowania na wykładninicze
+// zmiana zakresu na -50
+
+
+// *do zrobienia
+// *dogać grupy z id w tagu <g>
+// * podpisać rownolezniki i poludniki
+// horyzont jako elipsa
+// tarcza zegarowa z jajcem horyzontu do oddzielnego pliku
+// *granice?
+// glow napisów i linni kształtów, jakieś lepsze kolory
+// *droga mleczna?
+// M!
+// asteryzmy?
+// *kolorowe gwiazdy !
+// rozdzielczość do wyboru zboku
+// zapis po kliknieciu a nie na starcie
+// wywalić wszystko co niepotrzebne
+// *nazwy gwiazd  --------> problem ---------- uzaleznić go od deklinacji? moze nawet cos(delta)?  ---> wyzzbilem juz w guwnie wszystko co się dało i dalej nic chyba problem z tym że katalog gwiazd i katalog nazw mają inne wspolrzedne
+// * miesiace na ekliptyce
+// pas zodiakalny?
+
+//window.onresize = rozmiary
+//window.onresize = startuj
+
+var kanwa={  //wartosci domyslne w kanwie
+xres:1000,
+yres:1000,
+xmin:1,
+xmax:1000,
+ymin:1,
+ymax:1000,
+xfactor:1,
+yfactor:1,
+}
+
+function saveSvg(svgEl, name) {
+    svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    var svgData = svgEl.outerHTML;
+    var preface = '<?xml version="1.0" standalone="no"?>\r\n';
+    var svgBlob = new Blob([preface, svgData], {type:"image/svg+xml;charset=utf-8"});
+    var svgUrl = URL.createObjectURL(svgBlob);
+    var downloadLink = document.createElement("a");
+    downloadLink.href = svgUrl;
+    downloadLink.download = name;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
+
+
+function rozmiary()
+{
+ winW = 630, winH = 460;
+if (document.body && document.body.offsetWidth) {
+ winW = document.body.offsetWidth;
+ winH = document.body.offsetHeight;
+}
+if (document.compatMode=='CSS1Compat' &&
+    document.documentElement &&
+    document.documentElement.offsetWidth ) {
+ winW = document.documentElement.offsetWidth;
+ winH = document.documentElement.offsetHeight;
+}
+if (window.innerWidth && window.innerHeight) {
+ winW = window.innerWidth;
+ winH = window.innerHeight;
+}
+
+ winW = par.resolution.value, winH = par.resolution.value;
+   lmargin=220  
+    odstep_od_scrola=8
+	  scrool=16
+   tmargin=odstep_od_scrola
+ 
+  
+   xres=winW-lmargin-scrool-odstep_od_scrola //16=szerkosc scrola napewno w FF
+   yres=xres//1.75
+   if(yres>winH-odstep_od_scrola*2)
+    {
+	 yres=winH-odstep_od_scrola*2
+	 xres=yres//*1.75
+	 lmargin=winW-xres-scrool-odstep_od_scrola
+	}
+	
+	kanwa.xres=par.resolution.value//xres
+	kanwa.yres=par.resolution.value//yres
+}
+
+kliknieto=0
+
+function handleEvent(e){
+ var evt = e ? e:window.event;
+ var clickX=0, clickY=0;
+
+ if ((evt.clientX || evt.clientY) &&
+     document.body &&
+     document.body.scrollLeft!=null) {
+  clickX = evt.clientX + document.body.scrollLeft;
+  clickY = evt.clientY + document.body.scrollTop;
+ }
+ if ((evt.clientX || evt.clientY) &&
+     document.compatMode=='CSS1Compat' && 
+     document.documentElement && 
+     document.documentElement.scrollLeft!=null) {
+  clickX = evt.clientX + document.documentElement.scrollLeft;
+  clickY = evt.clientY + document.documentElement.scrollTop;
+ }
+ if (evt.pageX || evt.pageY) {
+  clickX = evt.pageX;
+  clickY = evt.pageY;
+ }
+
+ 
+ pozclickx=(xres-clickX+lmargin)*xfactor+xmin//-lmargin
+ pozclicky=(yres-clickY+tmargin)*yfactor+ymin//-tmargin
+ var z=Math.sqrt(1-Math.pow(pozclickx/4,2)-Math.pow(pozclicky/2,2))
+  lambdamyszy=2*Math.atan(z*pozclickx/2/(2*z*z-1))*12/Math.PI
+ fimyszy=Math.asin(z*pozclicky)*180/Math.PI
+
+  kliknieto=1
+  if(par.przesun_na_klik.checked == true)
+   {
+    par.przesun_na_klik.checked=false
+	if(par.proj_hor.checked == true)
+	{
+    par.azymut.value=par.azymut.value*1+lambdamyszy*15
+	par.wysokosc.value=par.wysokosc.value*1-fimyszy
+	ah_zm();
+	}
+	else
+	{
+	par.l_s.value=par.l_s.value*1+lambdamyszy
+	par.f_s.value=par.f_s.value*1-fimyszy
+	rada_zm();
+	}
+    startuj()
+    }
+ return false;
+}
+
+//-------------------poczatek planety10
+
+var zegar=null;
+	var zapuszczony=false;
+var au=149597887.0;              //jedna jednostak astronomiczna w km
+var rok=365.256;     //rok zwrotnikowy
+
+pl=new Array(Array("Slonce"),Array("Mercury",0.38709927,0.20563593,7.00497902,252.25032350,77.45779628,48.33076593,0.00000037,0.00001906,-0.00594749,149472.67411175,0.16047689,-0.12534081),Array("Venus",0.72333566,0.00677672,3.39467605,181.97909950,131.60246718,76.67984255,0.00000390,-0.00004107,-0.00078890,58517.81538729,.00268329,-0.27769418),Array("EM Bary",1.00000261,0.01671123,-0.00001531,100.46457166,102.93768193,0.0,0.00000562,-0.00004392,-0.01294668,35999.37244981,0.32327364,0.0),Array("Mars",1.52371034,0.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891,0.00001847,0.00007882,-0.00813131,19140.30268499,0.44441088,-0.29257343),Array("Jupiter",5.20288700,0.04838624,1.30439695,34.39644051,14.72847983,100.47390909,-0.00011607,-0.00013253,-0.00183714,3034.74612775,0.21252668,0.20469106),Array("Saturn",9.53667594,0.05386179,2.48599187,49.95424423,92.59887831,113.66242448,-0.00125060,-0.00050991,0.00193609,1222.49362201,-0.41897216,-0.28867794),Array("Uranus",19.18916464,0.04725744,0.77263783,313.23810451,170.95427630,74.01692503,-0.00196176,-0.00004397,-0.00242939,428.48202785,0.40805281,0.04240589),Array("Neptune",30.06992276,0.00859048,1.77004347,-55.12002969,44.96476227,131.78422574,0.00026291,0.00005105,0.00035372,218.45945325,-0.32241464,-0.00508664),Array("Pluto",39.48211675,0.24882730,17.14001206,238.92903833,224.06891629,110.30393684,-0.00031596,0.00005170,0.00004818,145.20780515,-0.04062942,-0.01183482),Array("RA DA"));
+
+function st_min(s)	//zamienia stopnie po przecinku na stopnie minuty sekundy
+{
+var k
+if(s<0)
+ k="-"
+else 
+ k="&#160 ";
+s=Math.abs(s);
+ 
+var stg=Math.floor(s);
+var ming=Math.floor((s-Math.floor(s))*60);
+var secg=Math.floor(((s-Math.floor(s))*60-Math.floor((s-Math.floor(s))*60))*60);
+return k+((Math.abs(stg)<10)? "0" : "")+stg+" : "+((ming<10)? "0" : "")+ming+" : "+((secg<10)? "0" : "")+secg;
+
+}
+
+
+function sins(x)
+{
+return Math.sin(x*Math.PI/180);
+}
+
+function coss(x)
+{
+return Math.cos(x*Math.PI/180);
+}
+
+function sinh(x)
+{
+return Math.sin(x*Math.PI/12);
+}
+
+function cosh(x)
+{
+return Math.cos(x*Math.PI/12);
+}
+
+
+function JD_C(rok,mies,dzien,godz,min,sec,milis)
+{
+
+var data=new Date(rok,mies,dzien,godz,min,sec,milis);
+var JD=data.getTime()/86400000+2440587.5;
+return JD
+}
+
+function F(xf,ef,prawaf)            //funkcja opisujaca rownaie keplera x=E prawa=M
+ { 
+  return(xf-ef*sins(xf)-prawaf)
+ }
+
+
+function kepler(ek,prawak,acck)
+{
+var x_min=0;
+var x_max=2*Math.PI;
+
+ while(x_max>(x_min+acck))          // metoda bisekji szukania miejsca zerowego rowniania keplera
+  {
+        var Ek=(x_max+x_min)/2;
+	  x_max=((F(x_min,ek,prawak)*F(Ek,ek,prawak))<0 ? Ek : x_max);
+      x_min=((F(x_max,ek,prawak)*F(Ek,ek,prawak))<0 ? Ek : x_min); 
+  }
+  
+  return(Ek)
+}
+
+function slonce(JD,co)
+{
+  var Ts=(JD-2451545.000000)/36525.6363004;
+  var Ls=(280.46645+36000.76983*Ts+0.0003032*Math.pow(Ts,2))%360;
+  Ls=(Ls<0?Ls+360:Ls)
+ var Ms=(357.52910+35999.05030*Ts-0.0001559*Math.pow(Ts,2)-0.00000048*Math.pow(Ts,3))%360;
+ Ms=(Ms<0?Ms+360:Ms)
+ var es=0.016708617-0.000042037*Ts-0.0000001236*Math.pow(Ts,2);
+ var C=(1.914600-0.004817*Ts-0.000014*Math.pow(Ts,2))*sins(Ms)
+ C+=(0.019993-0.000101*Ts)*sins(2*Ms)
+ C+=0.000290*sins(3*Ms)
+ 
+ var Teta=Ls+C;
+ var nu=Ms+C
+ var R=(1.000001018*(1-Math.pow(es,2)))/(1+es*coss(nu));
+ var Omega=125.04-1934.136*Ts;
+ var lambda=Teta-0.00569-0.00479*sins(Omega);
+ var Teta_app=lambda
+ var epsilon=23.452294-0.0130125*Ts-0.00000164*Math.pow(Ts,2)+0.000000503*Math.pow(Ts,3)+0.00256*coss(Omega)
+ 
+ var alfa=Math.atan2(coss(epsilon)*sins(Teta_app),coss(Teta_app))*12/Math.PI;
+ var deltas=Math.asin(sins(epsilon)*sins(Teta_app))*180/Math.PI;
+ alfa=(alfa<0?(alfa+24):alfa)
+ //var teksts="JD="+JD+"<br>alfa= "+st_min(alfa)+"<br>delta="+st_min(deltas);
+ 
+ 
+// wyswietl(teksts,"effki")
+ 
+ if(co==0)
+  return(R)
+ if(co==1)
+  return(alfa)
+ if(co==2)
+  return(deltas) 
+ if(co==3)
+  return(epsilon) 
+  
+}
+
+function planety(j,JD,cozw)
+{
+ 
+ var D=(JD-2451545.0)/36525
+
+ var a=pl[j][1]+pl[j][7]*D
+ var e=pl[j][2]+pl[j][8]*D
+ var i=(pl[j][3]+pl[j][9]*D)%360
+ var L=(pl[j][4]+pl[j][10]*D)%360
+ var wb=(pl[j][5]+pl[j][11]*D)%360
+ var W=(pl[j][6]+pl[j][12]*D)%360
+ 
+ var w=wb-W
+ 
+ var acc=0.0000001
+ var T=rok*Math.sqrt(Math.pow(a,3));             //w dniach
+ var p=a*(1-Math.pow(e,2));
+ a=a*au;
+ var t=JD
+ 
+ 
+ var prawa=(L-wb)%360 //tutaj mozna dodac kolejne wyrazy dla +-3000
+ prawa=(prawa<0) ? prawa+360 : prawa;
+ var E=kepler(e,(prawa*Math.PI/180),acc)*180/Math.PI
+ 
+ var xb=a*(coss(E)-e);			//w  km
+ var yb=a*Math.sqrt(1-Math.pow(e,2))*sins(E);	//w  km
+
+ var eps=slonce(JD,3)
+												//w  km
+ var xp=(coss(w)*coss(W)-coss(i)*sins(w)*sins(W))*xb+(-coss(W)*sins(w)-coss(i)*coss(w)*sins(W))*yb;
+ var yp=(-sins(eps)*sins(i)*sins(w)+coss(eps)*(coss(i)*coss(W)*sins(w)+ coss(w)*sins(W)))*xb+(-coss(w)*sins(eps)*sins(i)+ coss(eps)*(coss(i)*coss(w)*coss(W)-sins(w)*sins(W)))*yb;
+ var zp=(coss(i)*coss(W)*sins(eps)*sins(w)+coss(eps)*sins(i)*sins(w)+coss(w)*sins(eps)*sins(W))*xb+(coss(i)*coss(w)*coss(W)*sins(eps)+ coss(eps)*coss(w)*sins(i)- sins(eps)*sins(w)*sins(W))*yb;
+
+ var r_ps=Math.sqrt(Math.pow(xp,2)+Math.pow(yp,2)+Math.pow(zp,2));
+ 
+ // var tekst=pl[j][0]+"<br>odleglosc obiekt slonce= "+(r_ps/au)+"<br>";
+
+  var delta=slonce(JD,0)
+  var del_s=slonce(JD,2)
+  var al_s=slonce(JD,1)*15
+  delta*=au;            // zamiana delty z au na kal_sm
+ 
+  var X=delta*coss(del_s)*coss(al_s);
+  var Y=delta*coss(del_s)*sins(al_s);
+  var Z=delta*sins(del_s);
+
+  var x=xp+X;
+  var y=yp+Y;
+  var z=zp+Z;
+
+  var r=Math.sqrt(Math.pow(x,2)+Math.pow(y,2)+Math.pow(z,2));
+
+
+   del_o=Math.asin(z/r)*180/Math.PI
+   alp_o=Math.atan2(y,x)*12/Math.PI
+   alp_o=(alp_o<0) ? alp_o+24 : alp_o;  
+
+//tekst+="odledlosc Ziemia obiekt="+(r/au)+"<br>";
+//tekst+="alfa="+st_min(alp_o)+"<br>delta="+st_min(del_o);
+
+//predkosci
+
+
+  var sqrt_mi=2*Math.PI;  // au^(3/2)/rok
+  r_ps=r_ps/au;
+  var v_r=sqrt_mi*Math.sqrt(2/r_ps-p/Math.pow(r_ps,2)+(1-Math.pow(e,2)/p))*au/(rok*86400);
+  var v_fi=sqrt_mi*Math.sqrt(p)/r_ps*au/(rok*86400);
+ // tekst+="<br>v_r="+v_r+"[km/s]<br>v_fi="+v_fi+"[km/s]\n"
+ //wyswietl(tekst,"objekt")
+ 
+ if(cozw==0)
+  return(alp_o)
+ if(cozw==1)
+  return(del_o)
+ 
+}
+
+function hAT(RA,DA,JD,Lat,Long,coret)
+{
+  var Dh=(JD-2451545.0)/36525
+  var GST=((280.46061837+360.98564736629*(JD-2451545.0)+0.000387933*Math.pow(Dh,2)-Math.pow(Dh,3)/38710000)%360)/15
+  GST=(GST<0?GST+24:GST)
+ // var htext="<br> GST="+st_min(GST)+"<br>"
+  
+  Long*=-1
+  
+	var k_godz=GST+Long/15-RA;
+	k_godz=(k_godz<0)? k_godz+24 : k_godz;
+	
+	var h=Math.asin(sins(Lat)*sins(DA)+coss(Lat)*coss(DA)*cosh(k_godz))*180/Math.PI;
+	
+	var A=Math.atan2((coss(DA)*sinh(k_godz)),(-coss(Lat)*sins(DA)+sins(Lat)*coss(DA)*cosh(k_godz)))*180/Math.PI;
+	A=(A<0?A+360:A)
+	var refrakcja=(1/Math.tan((h+7.31/(h+4.4))*Math.PI/180))/60
+	var hr=h+refrakcja
+	
+	//  htext="<br> GST="+st_min(GST)+"<br>sk_godz="+st_min(k_godz)+"<br>h="+h+"<br>href="+hr+"<br>A="+A+"<br>"
+	 
+	 var LST=GST+Long/15
+      LST=(LST<0)? LST+24 : LST;
+	  LST=(LST>24)? LST-24 : LST;
+  //wyswietl(htext,"czasy")
+  
+  if(coret==0)
+   return(h)
+  if(coret==1)
+   return(A)
+  if(coret==2)
+   return(k_godz)
+  if(coret==3)
+    return(hr)
+  if(coret==4)
+   return(GST)
+     if(coret==5)
+   return(LST)  //LST (0;24)
+    
+	
+}
+
+function wsch_zach(objekt,JDw,Latw,Longw,str_czas) //objekt=(0>planety,0=slonce)
+{
+
+ var poludnieGST=(Math.floor(JDw+str_czas/24)+0.5)
+ var ho
+ var raw
+ var daw
+ Longw*=1
+ Latw*=1
+ //tutaj poprawke mozna obliczyc wziasc ra i da na moment wschodu a nie na poludnie danego dnia.
+ if((objekt!=0)&&(objekt!=10))
+  {
+  ho=-0.5667
+   raw=planety(objekt,poludnieGST,0)*15
+   daw=planety(objekt,poludnieGST,1)
+   // ra i da z planety dla konkreten JD
+  }
+ if(objekt==0)
+  {
+  ho=-0.8333
+   raw=slonce(poludnieGST,1)*15
+   daw=slonce(poludnieGST,2)
+   //ra i da z slonce dla konkretnej JD
+  }
+  if(objekt==10)
+  {
+    ho=-0.5667
+	raw=par.rec.value*1
+	daw=par.dec.value*1
+  }
+  var sec=sins(Latw)*sins(daw)
+   
+   if(sec<-1)
+    {
+	 return("nie wschodzi")
+	 //nie wschodzi
+	}
+	else if(sec>1)
+	 {
+      return("nie zachodzi")	 
+ 	 }
+	 else
+	 {
+      var Ho=Math.acos((sins(ho)-sec)/(coss(Latw)*coss(daw)))*180/Math.PI
+	  //wywolac GST od objektu od czesc całkowita(JD)+0.5
+	  var tetao=hAT(1,1,(Math.floor(JDw+str_czas/24)+0.5),Latw,Longw,4)*15
+      var mo=((raw+Longw-tetao+str_czas*15)/360)%1;
+	  mo=(mo<0?mo+1:mo)
+	  
+	  var m1=(mo-Ho/360)%1
+	  m1=(m1<0?m1+1:m1)
+	  
+	  var m2=(mo+Ho/360)%1
+	  m2=(m2<0?m2+1:m2)
+	  
+	  var widocznosc=2*((Ho/360)%1)*24
+	  var niewid=24-widocznosc
+	  var w_z="<br>W="+st_min(m1*24)+"<br>G="+st_min(mo*24)+"<br>Z="+st_min(m2*24)+"<br>nad"+st_min(widocznosc)+"<br> pod"+st_min(niewid)+"<br>"
+	  // wyswietl(w_z,"wsch_zach") 
+
+	   
+     }
+	return(w_z) 
+}
+
+
+	function teraz()
+	{
+	 var akt=new Date()
+	 par.rok.value=akt.getFullYear()
+	 par.mies.value=akt.getMonth()+1
+     par.dzien.value=akt.getDate()
+	 par.godz.value=akt.getHours()
+	 par.min.value=akt.getMinutes()
+	 par.strefa.value=akt.getTimezoneOffset()/(-60)
+	  par.rok.value=2018
+	 par.mies.value=03
+     par.dzien.value=21
+	 par.godz.value=5
+	 par.min.value=49
+     par.mag.value=5.5;
+	 par.l_s.value=0;
+	 par.f_s.value=0;
+	 rada_zm();
+	 par.radius.value=360;
+	 par.hiddentime.value=akt.getTime();
+	 par.rownik.checked=false
+	 par.poludniki.checked=false
+	 par.horyzont.checked=false
+	 par.planety.checked=false
+	 par.slonce.checked=false
+	 par.ekliptyka.checked=false
+	 	 par.ksiezyc.checked=false
+		 par.resolution.value=4500
+
+	}
+    
+	function gdzie_p(g)
+	{
+	if(g==0)//planetarium
+	 {
+	 par.szer.value=50.290903
+	 par.dl.value=-18.992436
+	 }
+	if(g==1)//OA UJ
+	 {
+	 par.szer.value=50.053657
+	 par.dl.value=-19.822731
+	 }
+	if(g==2)//cwiklice
+	 {
+	 par.szer.value=49.975132
+	 par.dl.value=-18.981341
+	 }
+	 
+	}
+	function par_pocz()
+	{
+     teraz()
+	 gdzie_p(0)
+	 zmien(0)
+	 }
+	 
+	 function zmien(sp)
+     {
+	  var skr=new Array("S","M","V","Z","M","J","S","U","N","P","RADA")
+	  var linia="|";
+	  var v
+
+    for(v=0;v<skr.length;v++)
+	   { 
+	    if(v!=sp)
+		 {
+	     linia+="<a href='javascript:zmien("+v+")'>"+skr[v]+"</a>|"
+		 }
+		 else
+		 {
+		  linia+="<a href='javascript:zmien("+v+")'> >"+skr[v]+"< </a>|"
+		  var kiedyz=JD_C(par.rok.value,(par.mies.value-1),par.dzien.value,par.godz.value,par.min.value,0,0)
+		  if(sp==0)
+		  {
+		   par.rec.value=slonce(kiedyz,1)
+		   par.dec.value=slonce(kiedyz,2)
+		  }
+		  if(sp>0&&sp<10)
+		  {
+		   par.rec.value=planety(sp,kiedyz,0)
+		   par.dec.value=planety(sp,kiedyz,1)
+		  }
+		  
+		  var dane=""
+		 dane=wsch_zach(sp,kiedyz,par.szer.value*1,par.dl.value*1,par.strefa.value*1)
+
+		 // dane+="s="+sp+"<br>kiedy="+ kiedyz+"<br> szer="+par.szer.value+"<br>dl= "+par.dl.value+"<br>str="+par.strefa.value
+		 // alert(dane)
+		  //tutaj wypelnimy nowa zminna tekstowa ktora wypisze wschud gorwanie zachud widocznosc kat gozinny h A 
+		 }
+	   }
+	     //var kiedy=JD_C(2012,3,5,10,31,0,0)
+		// alert("k"+kiedy)
+		//   wsch_zach(0,kiedy,50.0833,-19.9167)
+	   linia+="<br>"+dane+"A "+st_min(hAT(par.rec.value*1,par.dec.value*1,kiedyz,par.szer.value*1,par.dl.value*1,1))
+	   linia+="<br>h "+st_min(hAT(par.rec.value*1,par.dec.value*1,kiedyz,par.szer.value*1,par.dl.value*1,3))
+	   linia+="<br>t "+st_min(hAT(par.rec.value*1,par.dec.value*1,kiedyz,par.szer.value*1,par.dl.value*1,2))
+	   wyswietl(linia,"wyb")
+	 }   
+   
+
+   
+//----------------koniec planety10   
+
+    function odwrotna(plotxt,plotyt,coo,xmint, xfactort, xrest, ymint, yfactort, yrest)
+	{
+	  xt=xmint-(plotxt-xrest)*xfactort
+	  yt=ymint-(plotyt-yrest)*yfactort
+	  at=-2*Math.atan2(Math.sqrt(xt*xt+yt*yt)+xt,yt)*24/Math.PI
+	  dt=(2*Math.acos(-1*Math.sqrt(xt*xt+yt*yt)/2)-Math.PI/2)*180/Math.PI
+	  return (coo=="a")?at*1:((coo=="d")?(dt*1):0)
+	  
+	 
+	}
+    
+	function odwzorowanie(alfat, deltat)
+	 {
+	  var rot=2*Math.pow(sins((90-deltat)/2),1.3)
+	      // console.log("RO"+cot+" "+rot+"\r\n")
+			//var ro=90-tbl_g[i][1]
+			var xt=rot*cosh(alfat)
+            var yt=rot*sinh(alfat)	
+			return {x:xt,y:yt}
+	 }
+   
+    centruj={
+	 x:function(xt){
+	 return kanwa.xres-(xt-kanwa.xmin)/kanwa.xfactor;
+	 },
+	 y:function(yt){
+	  return (kanwa.yres)-(yt-kanwa.ymin)/kanwa.yfactor;
+	 }
+	}
+	
+   
+
+    function transform(alfat, deltat, cot, xmint, xfactort, xrest, ymint, yfactort, yrest)   //  to trzeba rozbić na dwie czesci  i normalnie korzystac z tego ale w przydaku gwiazd to na kwalki
+	{
+xt=odwzorowanie(alfat, deltat).x
+yt=odwzorowanie(alfat, deltat).y
+			
+			
+
+		polxt=centruj.x(xt)
+        polyt=centruj.y(yt)   
+			
+		return {x:polxt,y:polyt}//(cot=="x")?(polxt*1):(cot=='y')?(polyt*1):0;
+        
+	}
+
+    function rys(tbl)//tab to tablica w niej mamy x,y , rozmiar punktu,
+     {
+	 var wsad="<table bgcolor=black onclick='handleEvent(event)' style='width: "+xres+"; height: "+yres+"; position: absolute; left: "+lmargin+"px; top: "+tmargin+"px'><tr><td width="+xres+" height="+yres+">"
+	  
+	  //znajdujemy xmax i ymax ale bez sorta bo w sumie to nie ma sensu sortować po x potm po y jak tablica nie musi byc posortowana wcale
+	 //
+      xmax=tbl[0][0];
+	  xmin=tbl[0][0];
+	   ymin=tbl[0][1];
+	   ymax=tbl[0][1];
+	  for(i=0;i<tbl.length;i++)
+	   {
+	    xmax=(tbl[i][0]>xmax)?tbl[i][0]:xmax;
+		xmin=(tbl[i][0]<xmin)?tbl[i][0]:xmin;
+		ymax=(tbl[i][1]>ymax)?tbl[i][1]:ymax;
+		ymin=(tbl[i][1]<ymin)?tbl[i][1]:ymin;   
+	   }
+	   xmin-=(xmax-xmin)*0.05 //rozszerzanie 
+	   xmax+=(xmax-xmin)*0.05
+	   ymin-=(ymax-ymin)*0.05
+	   ymax+=(ymax-ymin)*0.05
+	   
+	 
+	   
+	   xfactor=(xmax-xmin)/xres
+	   yfactor=(ymax-ymin)/yres
+	   kanwa.xmin=xmin
+	   kanwa.xmax=xmax
+	   kanwa.ymin=ymin
+	   kanwa.ymax=ymax
+	   kanwa.xfactor=xfactor
+	   kanwa.yfactor=yfactor
+	 // alert(xmax/Math.PI+"\n"+xmin/Math.PI+"\n"+ymax/Math.PI+"\n"+ymin/Math.PI+"\n"+xfactor+"\n"+yfactor+"\n")
+	 
+	 var rmapy=(transform(0,90).x*1-transform(0,parametry.deklinacja_min).x*1)
+	 var rmapyskala=(transform(0,90).x*1-transform(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc).x*1)
+	wsad+="<svg id='rys_svg' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"
+    wsad2="<svg id='rys_wierzch' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"
+    wsad2+="\t<defs>\r\n"
+	
+	 wsad+="\t<defs>\r\n"
+        wsad+="\t\t<filter id='dropGlow' >\r\n"
+            wsad+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='1' />\r\n"
+          wsad+="\t\t</filter>\r\n"
+		  
+		   wsad+="\t\t<mask id='hole'>\r\n"
+      wsad+="\t\t\t<rect width='100%' height='100%' fill='white'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+      wsad+="\t\t\t<circle r='"+rmapy+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
+    wsad+="\r\n\t\t</mask>"
+		  
+		  //maska na kartke z horyzontem i tarcze zegarową
+		  
+		    wsad2+="\t\t<mask id='zegar'>\r\n"
+      wsad2+="\t\t\t<rect width='100%' height='100%' fill='black'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+      wsad2+="\t\t\t<circle r='"+(transform(0,90).x-transform(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc-20).x+parametry.rozmiar_czcionki_godzinnej+1)+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory bedzie przexroczysty
+      wsad2+="\t\t\t<circle r='"+rmapyskala+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
+
+    wsad2+="\r\n\t\t</mask>" 
+	
+		  
+		  
+		  h=-2 //glebokosc ze wzgledu na refrakcje
+		A=0;
+	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	    x0=transform(HA_h,del_h*180/Math.PI).x
+	     y0=transform(HA_h,del_h*180/Math.PI).y
+		 liniahorA="M"+x0+","+y0+" C"
+		 
+		 h=-10;
+		 	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+	    	var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	    x0=transform(HA_h,del_h*180/Math.PI).x
+	     y0=transform(HA_h,del_h*180/Math.PI).y
+		 liniahorSkala="M"+x0+","+y0+" C"
+		 
+		for(A=1;A<=360;A++){
+		 h=-2
+	     var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	   
+		 x0=transform(HA_h,del_h*180/Math.PI).x
+	     y0=transform(HA_h,del_h*180/Math.PI).y
+		// console.log(del_h+" "+HA_h+" ")
+		 liniahorA+=""+x0+","+y0+" "
+		 		 
+				 h=-10
+				 
+	     var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	   
+		 x0=transform(HA_h,del_h*180/Math.PI).x
+	     y0=transform(HA_h,del_h*180/Math.PI).y
+		// console.log(del_h+" "+HA_h+" ")
+		 liniahorSkala+=""+x0+","+y0+" "
+		}
+
+       //  wsad+="\r\n\t<g id='horyzont elipsa'>"
+   	//	wsad+="\r\n\t</g>"
+		  
+		  
+		  
+		  
+		  
+		  
+		  
+		  		   wsad2+="\t\t<mask id='hormask'>\r\n"
+				         wsad2+="\t\t\t<rect width='100%' height='100%' fill='white'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+                         wsad2+="\t\t\t<circle r='"+rmapyskala+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
+                         wsad2+="\t\t\t<circle r='"+rmapy+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory bedzie przexroczysty
+						 wsad2+="\r\n\t\t<path d='"+liniahorA+"Z' fill='black' stroke='none'  fill-opacity='1' />"
+
+
+    wsad2+="\r\n\t\t</mask>"
+
+             wsad2+="\t\t<mask id='horskala'>\r\n"
+				         wsad2+="\t\t\t<rect width='100%' height='100%' fill='black'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+						 wsad2+="\r\n\t\t<path d='"+liniahorSkala+"Z' fill='white' stroke='none'  fill-opacity='1' />"
+						 wsad2+="\r\n\t\t<path d='"+liniahorA+"Z' fill='black' stroke='none'  fill-opacity='1' />"
+
+
+    wsad2+="\r\n\t\t</mask>"
+ wsad2+="\r\n\t</defs>"
+		  //	wsad2+="\r\n\t<rect width='100%' height='100%' fill='white' />"
+
+		  
+		  
+    wsad+="\r\n\t</defs>"
+	wsad+="\r\n\t<g id='tlo'>"
+	wsad+="\r\n\t<rect width='100%' height='100%' fill='"+parametry.kolory.tlo_kwadrat+"' />"
+	
+	
+	 	
+	
+    wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+rmapyskala+" fill='"+parametry.kolory.tlo_skali_rocznej+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='1.5' />"
+    wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+rmapy+" fill='"+parametry.kolory.tlo_mapy+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='1.5' />"
+	wsad+="\r\n\t</g>"
+	
+	
+	
+
+	
+
+	//DM  pomobinowane żeby się dobrze plotowało trzba uważać na to co pod horyzontem a przede wszystkim kolejnośc punktów musi być odpowiednia a w danych sa skoki.
+	  var poly_point=""
+	 for(i=4517;i<5469;i+=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
+		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
+		
+	 for(i=0;i<3541;i+=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
+		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
+
+     for(i=7599;i>5470;i-=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
+		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
+	
+     for(i=9150;i>8000;i-=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
+		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
+		
+	  
+		  
+		 // console.log(poly_point)
+	wsad+="\r\n\t<g id='DM'>"	 
+	wsad+="\r\n\t\t<polygon points='"+poly_point+"' style='fill:"+parametry.kolory.DM+";' />" // fill-rule:evenodd;
+	wsad+="\r\n\t</g>"
+	   //rysunki
+	  //rysunki są tutaj żeby to białe kułko je przykryło jak wystają
+	 wsad+="\r\n\t<g id='rysunki'>" 
+	 for(i=0;i<rysunki.length;i++)
+		 if(rysunki[i][1]>(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)&&rysunki[i][3]>(parametry.deklinacja_min-parametry.skala_roczna.szerokosc))
+		  {
+		   	
+			wsad+="\r\n\t\t<line x1="+transform(rysunki[i][0],rysunki[i][1]).x*1+" y1="+transform(rysunki[i][0],rysunki[i][1]).y*1+" x2="+transform(rysunki[i][2],rysunki[i][3]).x*1+" y2="+transform(rysunki[i][2],rysunki[i][3]).y*1+"  stroke-width='0.5' stroke='"+parametry.kolory.rysunki+"' />"
+
+		  }
+		  
+		  wsad+="\r\n\t</g>"
+		  wsad+="\r\n\t<g id='granice'>"
+		  
+		  // granice ?
+		  em=1;
+		   de=""
+		   pocz=""
+		   ile_linii=0
+		   for(i=0;i<granice.length-1;i++)
+		    if(granice[i][1]>(parametry.deklinacja_min-parametry.skala_roczna.szerokosc))
+		    {
+			 if(em)
+			  {
+			  ile_linii++
+			  de+="M"+transform(granice[i][0],granice[i][1]).x*1+","+transform(granice[i][0],granice[i][1]).y*1+" C"
+			  em=0;
+			  }
+			  else
+			  {
+			  if(granice[i][2]==granice[i+1][2]&&granice[i][3]==granice[i+1][3])
+			   {
+			    ile_linii++
+			    de+=transform(granice[i][0],granice[i][1]).x*1+","+transform(granice[i][0],granice[i][1]).y*1+" "
+			   }
+			   else
+			   {
+			   ile_linii++
+			    de+=transform(granice[i][0],granice[i][1]).x*1+","+transform(granice[i][0],granice[i][1]).y*1+" "
+				indexy=""
+				
+				for(k=i+1;k<(i+granice.length);k++)
+				 {
+				  index=k
+				  if(k>=granice.length)
+				   index=k-granice.length
+				   
+				   indexy+=" "+index
+				  if(granice[i][3]==(granice[index][2]))
+                   {                
+				                    indexy+="*"
+									ile_linii++
+				    			    de+=transform(granice[index][0],granice[index][1]).x*1+","+transform(granice[index][0],granice[index][1]).y*1+" "
+									k=(i+granice.length)
+                   } 
+				   
+				   if(granice[i][3]==granice[index][3])
+				   {
+				    z=0
+					while(granice[index+z][3]==granice[i][3])
+					 z++
+					z-- 
+				    de+=transform(granice[index+z][0],granice[index+z][1]).x*1+","+transform(granice[index+z][0],granice[index+z][1]).y*1+" "
+					k=(i+granice.length)
+				   }
+				 }
+				 
+			    wsad+="\r\n\t\t<path d='"+de+"'   fill='none' stroke-dasharray='5,5' stroke='"+parametry.kolory.granice+"' stroke-width='0.5' />"
+			    de=""
+			    em=1
+			   }
+			  }
+		     // pierwszy punkt z takim samym granice[1][2] z M kolejne potem poprzedzone C aż do konca kazda z takich krzywych drukowana
+			 //  <path d="M100,200      C100,100  400,100  400,200"   fill="none" stroke="#000" stroke-width="2px" />
+		    }
+		  wsad+="\r\n\t</g>"
+		  //
+		  
+		  
+		  
+   //biały ring przykwywajacy wystające rysunki i wystającą DM
+   wsad+="\r\n\t<g id='tlo_skala'>"
+	    wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+rmapyskala+"  mask='url(#hole)' fill='"+parametry.kolory.tlo_skali_rocznej+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='1.5' />"
+   wsad+="\r\n\t</g>"
+	wsad+="\r\n\t<g id='skala_roczna'>"
+	//skala roczna
+    var h=0
+	var korr=(24/365)/4
+	skala_daty=new Date(2018,02,24,0,0,0,0)
+    dzienU=skala_daty.getTime();
+	locale = "pl-pl";
+	
+	for(pol=0;pol<24;pol+=(24/365))
+	       {
+		   biegnacyDzien=new Date(dzienU+h*86400000)
+		   nastepnyDzien=new Date(dzienU+(h+1)*86400000)
+		   pocz=parametry.skala_roczna.tiki.dlugosc.zwykly();
+		   stroke=parametry.skala_roczna.tiki.grubosc.zwykly();//0.5
+		   if(biegnacyDzien.getDate()%5==0)
+		   {
+		    pocz=parametry.skala_roczna.tiki.dlugosc.piec();
+		   stroke=parametry.skala_roczna.tiki.grubosc.piec();//1
+			}
+		   if(biegnacyDzien.getDate()%10==0)
+		   {
+		   pocz=parametry.skala_roczna.tiki.dlugosc.dziesiec();
+		   stroke=parametry.skala_roczna.tiki.grubosc.dziesiec();//1.5
+			}
+			
+		   if(nastepnyDzien.getDate()==1)
+		    {
+		    pocz=parametry.skala_roczna.tiki.dlugosc.miesiac();
+		    stroke=parametry.skala_roczna.tiki.grubosc.miesiac();//2
+			}
+			
+		
+			
+	       wsad+="\r\n\t\t <line x1="+transform(pol+korr,pocz).x*1+" y1="+transform(pol+korr,pocz).y*1+" x2="+transform(pol+korr,parametry.deklinacja_min-parametry.skala_roczna.szerokosc).x*1+" y2="+transform(pol+korr,parametry.deklinacja_min-parametry.skala_roczna.szerokosc).y*1+"  stroke-width='"+stroke+"' stroke='"+parametry.kolory.tiki_skali_rocznej+"' />"
+		   
+            if(biegnacyDzien.getDate()==15)
+			  {
+			   mies = biegnacyDzien.toLocaleString(locale, { month: "long" })
+			  // console.log(mies)
+			   var mx=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).x
+			   var my=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).y
+			   
+			   var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI-180
+			   var rozmiar_czcionki=xres* (parametry.skala_roczna.tiki.dlugosc.dziesiec()-parametry.skala_roczna.tiki.dlugosc.zwykly())/(180+2*Math.abs(parametry.deklinacja_min)+2*parametry.skala_roczna.szerokosc)
+			  // console.log(rozmiar_czcionki)
+			   wsad+="\r\n\t\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;' transform='rotate("+kont+" "+mx+","+my+")'>"+mies+"</text>"
+			  }
+	
+		   
+	        h++;	   
+	       }
+	
+	   wsad+="\r\n\t</g>"
+	
+	
+	  //rownik
+		// transform(0,0).x
+		// console.log("x90: "+transform(0,90).x+"\r\n")
+		// console.log("x0 : "+transform(0,0).x+"\r\n")
+		// console.log("y0: "+transform(0,0).y+"\r\n")
+		// console.log("y90: "+transform(0,90).y+"\r\n")
+		// console.log("r  : "+(transform(0,90).x*1-transform(0,0).x*1)+"\r\n")
+		// console.log("<circle cx='"+(transform(0,90).x*1)+"' cy='"+(transform(0,90).y*1)+"' r='"+(transform(0,90).x*1-transform(0,0).x*1)+"' fill='none' stroke='999999'/>")
+		wsad+="\r\n\t<g id='rownik'>"
+		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,0).x*1)+" fill='none' stroke='"+parametry.kolory.rownik+"' stroke-width='1.5' />"
+		 wsad+="\r\n\t</g>"
+		 
+		 //ekliptyka 
+		 
+		 
+		 nepd=66.5607//deg
+		 nepa=18//h
+		 nepdr=-23.4393//deg
+		  nepah=6//h
+		  nepdh=23.4393//deg
+		 
+		 srodeky=((transform(nepa,nepdr).y*1)+(transform(nepah,nepdh).y*1))/2
+ 		 srodekx=(transform(nepa,nepd).x*1)
+		 zerox=(transform(0,0).x*1)
+		 zeroy=(transform(0,0).y*1)
+ 		 hy=transform(nepa,nepdr).y*1-srodeky
+		 hx=Math.sqrt(Math.pow((zerox-srodekx),2)+Math.pow((srodeky-zeroy),2));
+		
+        // hx=Math.sqrt(-Math.pow(hy,2)+Math.pow((srodeky*1-transform(nepa,nepdr).y*1),2))  //z rownia aelipsy
+		 //hx=transform(nepa,nepdh).x*1-transform(0,0).x*1
+	//	console.log("<ellipse cx="+(transform(nepa,nepd).x*1)+" cy="+srodeky+" rx="+hx+" ry="+hy+" fill='none' stroke='#ffff77' stroke-width='1.5' />")
+       wsad+="\r\n\t<g id='ekliptyka'>"
+		 wsad+="\r\n\t\t<ellipse cx="+(transform(nepa,nepd).x*1)+" cy="+srodeky+" rx="+hx+" ry="+hy+" fill='none' stroke='"+parametry.kolory.ekliptyka_linia+"' stroke-width='1.5' fill-opacity='0.2'/>"
+		wsad+="\r\n\t</g>"
+		 
+	//ekliptyka II z datami
+	    
+		   wsad+="\r\n\t<g id='ekliptykaII'>"
+		   
+		   skala_slonca=new Date(2018,02,24,12,0,0,0) //24 marca
+		   JDo=JD_C(2018,02,24,12,0,0,0)
+		   	miesg=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"]
+		   for(i=0;i<365;i++)
+		   {
+	
+		   biegnacyDzien=new Date(skala_slonca.getTime()+i*86400000)
+           nastepnyDzien=new Date(skala_slonca.getTime()+(i+1)*86400000)
+		    rozmiar_ekl=1
+			napis=""
+			 JD=JDo+i
+			 ras=slonce(JD,1)// ra
+			 das=slonce(JD,2)//da
+			//   console.log(ras+" "+das)
+			   var mx=transform(ras*1,das*1).x
+			   var my=transform(ras*1,das*1).y
+			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			   
+			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
+			   var mxp=transform(ras*1,das*1).x+2*coss(kat)
+			   var myp=transform(ras*1,das*1).y-2*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  //to jest kat pod jakim nalezy obrucic prsta aby byla prostopadla do radialnej w biegnowym
+			   
+			   var mxk=transform(ras*1,das*1).x-4*coss(kat)
+			   var myk=transform(ras*1,das*1).y+4*sins(kat)
+			   
+			   wsad+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='0.5' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
+			   
+			if(biegnacyDzien.getDate()%5==0)
+			  {
+		      rozmiar_ekl=3
+			   var mxp=transform(ras*1,das*1).x+3*coss(kat)
+			   var myp=transform(ras*1,das*1).y-3*sins(kat)
+			   var mxk=transform(ras*1,das*1).x-5*coss(kat)
+			   var myk=transform(ras*1,das*1).y+5*sins(kat)
+						   wsad+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='1' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
+   
+			//  wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_ekl+"' fill='#ffff77' fill-opacity='0.5'/>"
+			
+			  }
+			  
+		   if(nastepnyDzien.getDate()==1)
+		    {
+			 rozmiar_ekl=6
+			// napis="\r\n\t\t <text text-anchor='middle' x='"+mxp+"' y='"+myp+"'  transform='rotate("+kont+" "+mxp+","+myp+")' fill='#ffff00' style='font-family: Calabri; font-size: 20px;' >"+Math.floor(kat*1)+" "+Math.floor(sins(kat*1)*100)/100+" "+Math.floor(coss(kat*1)*100)/100+"</text>"
+			 napis="\r\n\t\t <text text-anchor='middle' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;'  transform='rotate("+kont+" "+mxp+","+myp+")'>"+miesg[nastepnyDzien.getMonth()]+"</text>"
+			 wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_ekl+"' fill-opacity='0.7' fill='"+parametry.kolory.ekliptyka_tiki+"' />"
+			  wsad+=napis;
+			}
+		      
+		   }
+		 //wsad+="\r\n\t\t<ellipse cx="+(transform(nepa,nepd).x*1)+" cy="+srodeky+" rx="+hx+" ry="+hy+" fill='none' stroke='#ffff77' stroke-width='1.5' />"
+		wsad+="\r\n\t</g>"
+		 
+		 
+		 //rownolezniki
+		 wsad+="\r\n\t<g id='rownolezniki'>"
+		 for(lez=80;lez>parametry.deklinacja_min;lez-=parametry.skok_rownoleznikow)//(lez=-40;lez<90;lez+=20)
+		 {
+		   var mxp=transform(1,lez+0.3).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(1,lez+0.3).y//+(rozmiar)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
+			 wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.rownolezniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+lez+"&#176;</text>" //
+  		   var mxp=transform(13,lez+0.3).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
+          var myp=transform(13,lez+0.3).y//+(rozmiar)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
+			   			 wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.rownolezniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+lez+"&#176;</text>" //
+
+		 		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,lez).x*1)+" fill='none' stroke='"+parametry.kolory.rownolezniki+"' stroke-width='0.5' />"
+				 }
+        wsad+="\r\n\t</g>"
+		  
+		 //poludniki
+		 wsad+="\r\n\t<g id='poludniki'>"
+	     for(pol=0;pol<24;pol+=parametry.skok_poludnikow)
+		   {
+		   koniec=(pol%6==0)?parametry.poludniki.koniec_d:parametry.poludniki.koniec_k;
+		   
+		     
+			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
+			    var rozmiar_czcionki=xres* 1.2/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   var mxp=transform(pol-0.1,parametry.poludniki.text_delta_dwa).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(pol-0.1,parametry.poludniki.text_delta_dwa).y//+(rozmiar)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
+		   
+		   
+		  // wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.poludniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+pol+"h</text>" //
+               var mxp=transform(pol-0.01,parametry.poludniki.text_delta_rownik).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(pol-0.01,parametry.poludniki.text_delta_rownik).y//+(rozmiar)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
+			 wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.poludniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+pol+"h</text>" //
+
+	       wsad+=" <line x1="+transform(pol,parametry.deklinacja_min).x*1+" y1="+transform(pol,parametry.deklinacja_min).y*1+" x2="+transform(pol,koniec).x*1+" y2="+transform(pol,koniec).y*1+"  stroke-width='0.5' stroke='"+parametry.kolory.poludniki+"'/>"
+		   }
+	     wsad+="\r\n\t</g>"
+	  
+	
+	    //nazwy gwiazdozbiorow
+		 //minuty czasowe
+		 wsad+="\r\n\t<g id='nazwy_const'>"
+		 for(i=0;i<labele_const.length;i++)
+		  if(labele_const[i][1]>parametry.deklinacja_min)
+		  {  
+		       
+		       var mx=transform(labele_const[i][0]*1,labele_const[i][1]*1).x
+			   var my=transform(labele_const[i][0]*1,labele_const[i][1]*1).y
+			   //console.log(mx+""+my)
+			   var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI
+			   var rozmiar_czcionki=xres* 2/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+ 			   wsad+="\r\n\t\t <text text-anchor='left' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; stroke: "+parametry.kolory.nazwy_gwiazdozbiorow_stroke+"; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' transform='rotate("+kont+" "+mx+","+my+")'>"+labele_const[i][3]+"</text>" //
+
+		  }
+	wsad+="\r\n\t</g>"
+	wsad+="\r\n\t<g id='gwiazdy'>"
+	  for(i=0;i<tbl.length;i++)
+	  {
+	  	rozm_x=tbl[i][2];
+	    rozm_y=tbl[i][2];
+		
+	    polx=centruj.x(tbl[i][0])//(tbl[i][0]-xmin)/xfactor-rozm_x/2;
+	    poly=centruj.y(tbl[i][1])//(yres)-(tbl[i][1]-ymin)/yfactor-rozm_y/2;
+		//polx=xres-polx
+  
+      //  var kol=(tbl[i][3]=="g")?"white":((tbl[i][3]=="cz")?"red":((tbl[i][3]=="nb")?"blue":"green"))
+	  var kol_hr="";
+	  var tbl_kol={"g": "#ffffff","cz": "#ff7777","nb": "#7777ff","hor": "#55ff55","ekl": "#ffff77","rown": "#3333ff","rownp": "#77ffff","slo": "#ffff00","ks": "#999999","Mercury": "#ffc644","Venus": "#ffc644","Mars": "#cc0000","Jupiter": "#ffc644","Saturn": "#ffc644"}
+      if(!Array.isArray(tbl[i][3]))
+         kol_hr=tbl_kol[tbl[i][3]]//(tbl[i][3]=="g")?"#ffffff":((tbl[i][3]=="cz")?"#ff7777":((tbl[i][3]=="nb")?"#7777ff":"green"))
+      else
+	   {
+	    HR=kolory.typ[tbl[i][3][0]]+tbl[i][3][1]
+		R=Math.floor(kolory.R.a*Math.tanh((HR+kolory.R.b)*kolory.R.c)+kolory.R.d).toString(16);
+		G=Math.floor(kolory.G.a*pow(HR,4)+kolory.G.b*pow(HR,3)+kolory.G.c*pow(HR,2)+kolory.G.d*HR+kolory.G.e).toString(16);
+		B=Math.floor(kolory.B.a*Math.tanh((HR+kolory.B.b)*kolory.B.c)+kolory.B.d).toString(16);
+	   kol_hr="#"+R+""+G+""+B;
+	
+	   
+	   }
+	  //  wsad+="<AREA SHAPE=circle COORDS="+polx+","+poly+","+rozm_x/2+" HREF='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'><a href='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'>";
+	   //  wsad+="<hr size="+rozm_y+" width="+rozm_y+" color="+kol_hr+" style='position: absolute; left: "+polx+"px; top: "+poly+"px; color: "+kol_hr+"' onclick='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'>"//</a>"; 
+//		 wsad+="<circle cx='"+polx+"' cy='"+poly+"' r='"+rozm_y/2+"' stroke='black' stroke-width='0' fill='"+kol_hr+"' filter:url(#dropGlow)/>"
+        var znik=''
+          if(tbl[i][3]=="corner")
+		   znik=" style='fill-opacity: 0;'" // znikniecie 4 kropek robiacych rozmiar kuleczka.
+        wsad+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*1.2+"' fill='"+kol_hr+"' filter='url(#dropGlow)' "+znik+"/>"
+		 wsad+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*0.8+"' fill='"+kol_hr+"' "+znik+" />"     		
+	  // wsad+="<img src="+tbl[i][3]+".png height="+rozm_y+" style='position: absolute; left: "+polx+"px; top: "+poly+"px'>"//</a>"
+	  }
+	  wsad+="\r\n\t</g>"
+	  
+	  
+	  
+	  
+	    //nazwy jasnych gwiazd
+		 ///nazwyg
+wsad+="\r\n\t<g id='nazwy_gwiazd'>"
+		   przesuniecieda=5/60
+		  for(i=0;i<nazwyg.length;i++)
+		  if(nazwyg[i][2]<parametry.jasnosc_graniczna_nazw&&nazwyg[i][1]>parametry.deklinacja_min)//organiczenie na jasność i na deklinacje
+		  {                                        //  /coss(nazwyg[i][1]*1)   // /pow(2*coss(nazwyg[i][1]*1),)   /sins(90-nazwyg[i][1]*1)
+		                 przesunieciera=1/60+4/60/pow((90-nazwyg[i][1]*1),2.5)
+						 
+						 offset =1.2
+     		  rozmiar=pow((par.mag.value*1+offset-tbl[i][2]),1.3)//*(180+2*45)/xres*sins(90-nazwyg[i][1]*1)/60
+
+		       //var mx=transform(nazwyg[i][0]*1-przesunieciera-(nazwyg[i][2]*1)/60,nazwyg[i][1]*1+przesuniecieda).x
+			   //var my=transform(nazwyg[i][0]*1-przesunieciera-(nazwyg[i][2]*1)/60,nazwyg[i][1]*1+przesuniecieda).y
+			     
+			   var mx=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).x
+			   var my=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).y
+			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			   
+			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
+			    var rozmiar_czcionki=xres* 1.5/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   var mxp=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).x-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).y+(rozmiar)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  //to jest kat pod jakim nalezy obrucic prsta aby byla prostopadla do radialnej w biegnowym
+						   
+ 			   wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_gwiazd+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+nazwyg[i][3]+"</text>" //
+
+		  }
+	  wsad+="\r\n\t</g>"
+	  
+	  wsad+="\r\n\t<g id='mglawice'>"
+	  
+	    for(i=0;i<mglawice.lista.length;i++)
+		  if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic&&mglawice.lista[i][1]>parametry.deklinacja_min)
+	       {
+		     
+			 rozmiar_m=4;// px
+		   
+		    var mx=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).x
+			   var my=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).y
+			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			   
+			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
+			    var rozmiar_czcionki=xres* 1.5/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   var mxp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).x-(rozmiar_m+2)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).y+(rozmiar_m+2)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI
+			   
+          switch(mglawice.typy[mglawice.lista[i][4]]){
+		  case "Galaktyka"://elipsa
+		   wsad+="\r\n\t\t<ellipse cx='"+mx+"' cy='"+my+"' rx='"+(rozmiar_m*1.1)+"' ry='"+(rozmiar_m*0.7)+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mxp+","+myp+")' />"     		
+
+		  break;
+		  case "Gromada kulista":  //koło pełne
+		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none'/>"     		
+
+		  break;
+		  case "Gromada otwarta":  //koło puste
+		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"'/>"     		
+
+		  break;
+		  case "Mgławica emisyjna": //kwadrat
+		  		  		    wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m)+"' height='"+(rozmiar_m)+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mxp+","+myp+")' />"     		
+
+		  break;
+		  case "Mgławica planetarna":  // koło grube
+		  		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+(rozmiar_m)+"' fill='none' stroke-width='2' stroke='"+parametry.kolory.mglawice+"'/>"     		
+
+		  break;
+		  case "Mgławica refleksyjna": // trójkat
+		  		  		  		    wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m)+"' height='"+(rozmiar_m)+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none' transform='rotate("+kont+" "+mxp+","+myp+")'/>"     		
+
+		  break;
+		  }
+		   
+ 	  //wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='none' stroke-width='1' stroke='"+parametry.kolory.mglawice+"'/>"     		
+        wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+
+		   }
+	  wsad+="\r\n\t</g>"
+	  	//horyzont
+		
+		wsad2+="\r\n\t<g id='horyzont z maska'>"
+        wsad2+="\t\t\t<rect width='100%' height='100%' fill='"+parametry.kolory.tarcza_zegarowa+"' mask='url(#hormask)' />\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+
+	 
+   wsad2+="\r\n\t</g>"
+	
+	
+	//tło skali horyzontu
+	wsad2+="\r\n\t<g id='horyzont tło skali'>"
+	        wsad2+="\t\t\t<rect width='100%' height='100%' fill='"+parametry.kolory.tlo_skali_azymutu+"' mask='url(#horskala)' />\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+   wsad2+="\r\n\t</g>"
+	//--tło skali horyzontu
+	     //skala horyzontu
+	wsad2+="\r\n\t<g id='skala azymutu'>"
+	   
+	   
+	   
+	    
+		
+	    for(A=0;A<=360;A++){
+		
+		 h=-2 //glebokosc ze wzgledu na refrakcje
+	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	     x1=transform(HA_h,del_h*180/Math.PI).x
+	     y1=transform(HA_h,del_h*180/Math.PI).y
+		 h=-3
+		 if(A%10==0)
+		  h=-4
+		 
+		 if(A%30==0)
+		  h=-5
+		 
+		 if(A%90==0)
+		  h=-6
+		 
+		var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	     x2=transform(HA_h,del_h*180/Math.PI).x
+	     y2=transform(HA_h,del_h*180/Math.PI).y
+		// console.log(del_h+" "+HA_h+" ")
+		wsad2+="\r\n\t\t <line x1="+x1+" y1="+y1+" x2="+x2+" y2="+y2+"  stroke-width='1' stroke='"+parametry.kolory.tiki_horyzontu+"' />"
+		if(A%90==0)
+		 {
+		  kierunki={0:"S",90:"E",180:"N",270:"W",360:"S"}
+		  h-=0.1
+		var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	     x2=transform(HA_h,del_h*180/Math.PI).x
+	     y2=transform(HA_h,del_h*180/Math.PI).y
+		  
+		  	   var kat=Math.atan2(kanwa.yres/2-y2,x2-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			     mxp=((parametry.rozmiar_czcionki_kierunki*13/20)/2)*coss(kat)
+		         myp=-((parametry.rozmiar_czcionki_kierunki*13/20)/2)*sins(kat)
+			   
+		  wsad2+="\r\n\t\t <text text-anchor='middle' x='"+x2+"' y='"+y2+"'   transform='translate(0 "+((parametry.rozmiar_czcionki_kierunki*13/20)/2)+") translate("+mxp+" "+myp+")' style='font-family: Calabri; font-size: "+parametry.rozmiar_czcionki_kierunki+"px; fill: "+parametry.kolory.czcionak_kierunku+";' >"+kierunki[A]+"</text>" //
+         }
+		 else
+		 {
+		   if(A%30==0||A%10==0)
+		   {
+		   h-=0.1
+		   var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+		   var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
+	        x2=transform(HA_h,del_h*180/Math.PI).x
+	        y2=transform(HA_h,del_h*180/Math.PI).y
+			
+			  var kat=Math.atan2(kanwa.yres/2-y2,x2-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			     mxp=((parametry.rozmiar_czcionki_kierunki*13/20)/2+2)*coss(kat)
+		         myp=-((parametry.rozmiar_czcionki_kierunki*13/20)/2+2)*sins(kat)
+			
+		    wsad2+="\r\n\t\t <text text-anchor='middle' x='"+x2+"' y='"+y2+"' transform='translate(0 "+((parametry.rozmiar_czcionki_azymut*13/20)/2)+") translate("+mxp+" "+myp+")'  style='font-family: Calabri; font-size: "+parametry.rozmiar_czcionki_azymut+"px; fill: "+parametry.kolory.czcionak_azymut+";' >"+A+"</text>" //
+
+		   }
+		 }
+		 
+		}
+	   
+	   
+	   
+	   
+	   
+
+	   wsad2+="\r\n\t</g>"
+	  //---skala horyzontu
+	  
+	  
+	  //tło skali godzinnej
+	          wsad2+="\t\t\t<rect width='100%' height='100%' fill='"+parametry.kolory.skala_zegarowa+"' mask='url(#zegar)' />\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+
+	  //--tło skali godzinnej
+	  
+	  //skala godzinna
+	  	wsad2+="\r\n\t<g id='skala godzinna'>"
+		 for(RA=0;RA<24*60;RA+=1)
+		 {
+		 tik=3;
+		 if(RA%10==0)
+		 tik=6;
+		 if(RA%30==0)
+		 tik=12;
+		 if(RA%60==0)
+		 tik=20;
+		 
+		 
+		 
+		       var mx=transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc-tik)*1).x
+			   var my=transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc-tik)*1).y
+			   var kat=Math.atan2(kanwa.yres/2-my,mx-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			 // console.log(kat) 
+		 wsad2+="\r\n\t\t <line x1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).x+" y1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).y+" x2="+mx+" y2="+my+"  stroke-width='1' stroke='#ffffff' />"
+		 if(RA%60==0)
+		 {
+		  mxp=((parametry.rozmiar_czcionki_godzinnej*13/20)/2+3)*coss(kat)
+		  myp=-((parametry.rozmiar_czcionki_godzinnej*13/20)/2+3)*sins(kat)
+		  wsad2+="\r\n\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"' transform='translate(0 "+((parametry.rozmiar_czcionki_godzinnej*13/20)/2)+") translate("+mxp+" "+myp+")'  style='font-family: Calabri; font-size: "+(parametry.rozmiar_czcionki_godzinnej)+"px; fill: #ffffff;' >"+(24-((RA/60-6<0)?RA/60+18:RA/60-6))+"</text>" //
+		 }
+		 
+         }
+	    wsad2+="\r\n\t</g>"
+	  //skala godzinna
+	  wsad2+="\r\n</svg>"
+	  wsad+="\r\n</svg> "+wsad2+" </td></tr></table>"
+	  wyswietl(wsad,"main")
+	 } 
+   
+     function opis(op,ha)
+	 {
+	  wsad="deklinacja= "+bscsk[op][1]+"<br>rektascencja= "+bscsk[op][0]+"<br>numer kat="+op+"<br>ha="+ha+"</br>";
+	  wyswietl(wsad,"opis")
+	 }
+
+
+	function start()
+	{
+	timestamp=""
+	 delay=new Date()
+	 pocz_del=delay.getTime();
+	 var promien=par.radius.value*1;
+	
+	var tbl_g=null;
+	delete tbl_g;
+    tbl_g=new Array(null);
+	var tbl_g= new Array();
+	log="log:<br>"
+	for(h=0;h<bscsk.length;h++)
+	    tbl_g[h]= bscsk[h];
+		
+	 	delayk5=new Date()
+		timestamp+="za przepisaniem "+(delayk5.getTime()-pocz_del)/1000+"s <br>"
+		
+	var zasieg=par.mag.value*1;
+	 var offset=3
+			 var kiedyz=JD_C(par.rok.value,(par.mies.value-1),par.dzien.value,par.godz.value,par.min.value,0,0)
+             var localST=hAT(par.rec.value*1,par.dec.value*1,kiedyz,par.szer.value*1,par.dl.value*1,5) //5 zw LST
+			// ksiezyc(kiedyz,0)
+     var 	j=bscsk.length;
+
+	delayk4=new Date()
+		timestamp+="przed dodawaniem lini "+(delayk4.getTime()-pocz_del)/1000+"s <br>"
+
+	//planety slonce najlepsza chyba unifikacja bedzie dodanie planet i slonca do bscsk z mag -5 i k odpowiednim
+	 if(par.planety.checked==true)
+	 for(i=1;i<7;i++)
+	  if(i!=3)
+	   {
+	    tbl_g[j]=new Array(planety(i,kiedyz,0),planety(i,kiedyz,1),-2,pl[i][0]);
+		j++
+	   }
+	   if(par.slonce.checked==true)
+	   {
+	   	 tbl_g[j]=new Array(slonce(kiedyz,1),slonce(kiedyz,2),-5,"slo");
+        j++
+		}
+	//koniec plenty slonce
+  if(par.ksiezyc.checked==true)
+	   {
+	     ksiezycad=ksiezyc(kiedyz)
+	   	 tbl_g[j]=new Array(ksiezycad[0],ksiezycad[1],-5,"ks");
+        j++
+		}
+	
+		//-------poczatek horyzont
+	//jakps tu trzba ujac zoom tak aby zawsze przypadal pixel horyzontu na pixel orazka 
+	var rozm_rys=3 // rysunki lini maja po 3 px szerokosci
+	var st_na_px=Math.floor(promien/xres*rozm_rys) +1
+	//alert(st_na_px)
+	if(par.horyzont.checked==true)
+      for(A=0;A<360;A+=st_na_px)
+	  {
+       var del_h=Math.asin(coss(A)*coss(par.szer.value*1))
+	   var HA_h=Math.acos(-Math.tan(del_h)*Math.tan(par.szer.value*1*Math.PI/180))*12/Math.PI 
+	  if(A>180)
+	    HA_h=-HA_h
+	   var RA_h=(localST-HA_h)
+	   RA_h=(RA_h<0)?RA_h+24:RA_h
+	   RA_h=(RA_h>24)?RA_h-24:RA_h
+	   tbl_g[j]=new Array(RA_h,(del_h*180/Math.PI),-50,"hor"); // slaby punkt z jasnoscia   
+	   j++
+	  }                                                                                                       
+	  //----------koniec horyzon
+      //-------------ekliptyka
+	  if(par.ekliptyka.checked==true)
+	  {
+	  var eps=slonce(kiedyz,3) //nachylenie ekliptyki do rownika tg d= sin a tg e
+	  for(al=0;al<24*10;al+=st_na_px)
+	   {
+	    var delekl=Math.atan(sinh(al/10)*Math.tan(eps*Math.PI/180))
+		tbl_g[j]=new Array(al/10,(delekl*180/Math.PI),-50,"ekl"); 
+        j++
+	   }
+	   }
+	  //-------------koniec ekliptyki	  
+	  //--------------rownik
+	  if(par.rownik.checked==true)
+	  for(r=0;r<24*10;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(r/10,0,-50,"rown");
+		j++
+		}
+	  //---------------koniec ronwika
+	  //---------------------poludniki
+	  if(par.poludniki.checked==true)
+	  {
+	  for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST+0.001,r,-50,"rownp");
+		j++
+		}
+			  for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST+5.99,r,-50,"rownp");
+		j++
+		}
+			  for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST-5.99,r,-50,"rownp");
+		j++
+		}
+			  for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST+11.99,r,-50,"rownp");
+		j++
+		}
+					  for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST+12.001,r,-50,"rownp");
+		j++
+		}
+		 for(r=-90;r<90;r+=st_na_px)
+	   {
+	    tbl_g[j]=new Array(localST+23.99,r,-50,"rownp");
+		j++
+		}
+		}
+	//-----------------------koniec poludnika
+	
+	if(par.proj_hor.checked==true)
+	{
+	 tbl_gh=new Array();
+	 for(h=0;h<tbl_g.length;h++)
+	  {
+	  tbl_gh[h]=new Array();
+	   //log+="h: "+h+" Ha "+tbl_g[h][0]+" delta "+tbl_g[h][1]+" "
+	   var H_h=localST-tbl_g[h][0];
+	  // H_h=-19.709
+	   //par.szer.value=38+55/60
+	   //tbl_g[h][1]=-6-43/60
+	   
+	   //---------- z eqlite
+	   	k_godz=(H_h<0)? H_h+24 : H_h;
+	
+	     var hu=Math.asin(sins(par.szer.value*1)*sins(tbl_g[h][1])+coss(par.szer.value*1)*coss(tbl_g[h][1])*cosh(k_godz))*180/Math.PI;
+	
+	     var A=Math.atan2((coss(tbl_g[h][1])*sinh(k_godz)),(-coss(par.szer.value*1)*sins(tbl_g[h][1])+sins(par.szer.value*1)*coss(tbl_g[h][1])*cosh(k_godz)))*180/Math.PI+180;
+	     A=(180-(A<0?A+360:A))*Math.PI/180
+	      var refrakcja=(1/Math.tan((hu+7.31/(hu+4.4))*Math.PI/180))/60
+	      var hr=hu+refrakcja 
+		   
+		//  log+="hu: "+hr+" refrakcja: "+refrakcja+"<br>";
+	   //-----------
+	   
+	   // tbl_gh[h][0]=A;
+	    //tbl_gh[h][1]=hr;
+	   //tbl_gh[h][0]=tbl_g[h][0]//-localST-Math.atan2(cosh(H_h)*sins(par.szer.value*1)-Math.tan(tbl_g[h][1]*Math.PI/180)*coss(par.szer.value*1),sinh(H_h))*12/Math.PI//tan A =sinH/(cos H sin fi-tan delta cos fi)
+	   //  tbl_g[h][0]=(tbl_g[h][0]<0)?24+tbl_g[h][0]:tbl_g[h][0]
+	   //tbl_gh[h][1]=tbl_g[h][1]//Math.asin(sins(par.szer.value*1)*sins(tbl_g[h][1])+coss(par.szer.value*1)*coss(tbl_g[h][1])*cosh(H_h))*180/Math.PI //sin h =sin fi sin d-cos fi cos d cos H
+	  // alert("A "+tbl_g[h][0]+" h "+tbl_g[h][1])
+	 
+	  
+	  	    tbl_gh[h][2]=tbl_g[h][2];
+			    tbl_gh[h][3]=tbl_g[h][3];
+				 tbl_gh[h][4]=tbl_g[h][4];
+					var mianownik=Math.sqrt(1+coss(hr)*coss(A/2));// odwzorowanie hammer
+			var x=2*Math.sqrt(2)*coss(hr)*sins(A/2)/mianownik;
+			var y=Math.sqrt(2)*sins(hr)/mianownik;
+			
+	 tbl_gh[h][0]=x;
+	  tbl_gh[h][1]=y;
+//	 log+="A "+tbl_gh[h][0]+" h "+tbl_gh[h][1]+"<br>"
+				
+				
+	  }
+	//tutaj mozna zmienic projekcje z ha da na h A w tbl_g to wpisac trzeba inaczej nie zadzierngnie z automatu, albo wyrzucic czesc o projekcji i obrotach do innej fcji
+	//tan A =sinH/(cos H sin fi-tan delta cos fi)
+	//sin h =sin fi sin h-cos fi cos h cos A
+gu=0
+tbl_gu=new Array();
+for(i=tbl_gh.length-1;i>=0;i--)//to od konc zeby linie byly pod gwiazdami
+	   {
+	    if(tbl_gh[i][2]<zasieg)
+	    {
+		tbl_gu[gu]=tbl_gh[i]
+		 rozmiar=(zasieg+offset-tbl_gh[i][2])
+			if(tbl_g[i][2]==-50)
+			 rozmiar=2
+		 tbl_gu[gu][2]=rozmiar	 
+		gu++
+	    }
+	}
+	//alert(tbl_gu.length)
+	
+rys(tbl_gu)
+}
+else
+{
+
+
+	delayk3=new Date()
+		timestamp+="przed forem"+(delayk3.getTime()-pocz_del)/1000+"s <br>"
+	
+      log+="lst: "+localST+"<br>"
+	var gwiazdy=null
+	delete gwiazdy
+	gwiazdy=new Array()
+	
+	var j=0
+	  tbl_g[tbl_g.length]=new Array(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc,4,"corner");
+	  tbl_g[tbl_g.length]=new Array(6,parametry.deklinacja_min-parametry.skala_roczna.szerokosc,4,"corner");
+	  tbl_g[tbl_g.length]=new Array(12,parametry.deklinacja_min-parametry.skala_roczna.szerokosc,4,"corner");
+	  tbl_g[tbl_g.length]=new Array(18,parametry.deklinacja_min-parametry.skala_roczna.szerokosc,4,"corner");
+	  
+      for(i=tbl_g.length-1;i>=0;i--)//to od konc zeby linie byly pod gwiazdami
+	   {
+	  //  console.log(i+"\r\n");
+	  //  console.log(tbl_g.length);
+	    if(tbl_g[i][2]<zasieg)
+	    {
+		
+		
+		if(tbl_g[i][1]>parametry.deklinacja_min||tbl_g[i][3]=="corner") //ograniczenie na deklinacje do 45 na poludnie
+		{
+		   	x=odwzorowanie(tbl_g[i][0], tbl_g[i][1]).x
+            y=odwzorowanie(tbl_g[i][0], tbl_g[i][1]).y
+	                     //6      3        (-1, 6)
+						 offset =1.2
+     		  rozmiar=pow((zasieg+offset-tbl_g[i][2]),1.3)  // jak zwiększyć kontrast??  kontrast zwiększony potengowaniem
+			if(tbl_g[i][2]==-50)
+			 rozmiar=2
+ 
+		     gwiazdy[j]=new Array(x,y,rozmiar,tbl_g[i][3],i)  //gw a nie tbl
+			j++
+		}
+      
+
+		/*
+	
+		//---------------obroty -----------------------------------
+           var l_s=par.l_s.value*1// alfa
+		   var f_s=0 // delta f_s !=0
+		   
+		   var HAa=tbl_g[i][0]
+		       HAa=(HAa>24)?HAa-24:HAa
+			   HAa=(HAa<0)?HAa+24:HAa
+          var xb=coss(tbl_g[i][1])*cosh(HAa) //tu drugi
+		   var yb=coss(tbl_g[i][1])*sinh(HAa)
+		   var zb=sins(tbl_g[i][1]) //tu pierszy
+		   
+		   var ro=Math.sqrt(xb*xb+yb*yb+zb*zb)
+		   
+		   var lamb=Math.atan2(yb/ro,xb/ro)*12/Math.PI-l_s  
+		   lamb=(lamb<0)?24+lamb:lamb;              
+     
+		   var fi=Math.asin(zb)*180/Math.PI//fi (-90;90)
+		 		   
+		 //------------------koniec obrotow
+		   
+		   var HA=(localST-lamb)   
+			HA=(HA<-12)?24+HA:HA;
+		   HA=(HA>12)?-24+HA:HA;
+	      //------------------najpeirw obrot wokół RA a potem od nowego US obrot w DA tak aby zawsze kat był byl licozny po sroku pola widzenia
+           f_s=par.f_s.value*1
+		   HAa=HA+12
+		   xb=coss(f_s)*coss(tbl_g[i][1])*cosh(HAa)+sins(f_s)*sins(tbl_g[i][1]) //tu drugi
+		   yb=coss(tbl_g[i][1])*sinh(HAa)
+		   zb=-sins(f_s)*coss(tbl_g[i][1])*cosh(HAa)+coss(f_s)*sins(tbl_g[i][1]) //tu pierszy
+		   ro=Math.sqrt(xb*xb+yb*yb+zb*zb)
+		   lamb=Math.atan2(yb/ro,xb/ro)*12/Math.PI
+	       fi=Math.asin(zb)*180/Math.PI//fi (-90;90)
+		   
+			rozmiar=(zasieg+offset-tbl_g[i][2])
+			if(tbl_g[i][2]==-50)
+			 rozmiar=2
+		    var lambda=-lamb
+		lambda-=12
+		lambda=(lambda<-12)?24+lambda:lambda
+		lambda=(lambda>12)?-24+lambda:lambda			 
+		
+		   lambda_pr=promien/30
+		   fi_pr=0//f_s
+		   
+		    var mianownik=Math.sqrt(1+coss(fi_pr)*cosh(lambda_pr/2));// odwzorowanie hammer
+			var x_pr=2*Math.sqrt(2)*coss(fi_pr)*sinh(lambda_pr/2)/mianownik;
+			var y_pr=x_pr/1.75
+			
+		  
+		    var mianownik=Math.sqrt(1+coss(fi)*cosh(lambda/2));// odwzorowanie hammer
+			var x=2*Math.sqrt(2)*coss(fi)*sinh(lambda/2)/mianownik;
+			var y=Math.sqrt(2)*sins(fi)/mianownik;
+		   if((x>-x_pr)&&(x<x_pr)&&(y>-y_pr)&&(y<y_pr)) //if promien
+		   {  
+		    gwiazdy[j]=new Array(x,y,rozmiar,tbl_g[i][3],i)
+			j++
+		   }
+			*/   
+	    } 
+	   }
+	   	delayk2=new Date()
+		timestamp+="przed rys(gwiazdy) "+(delayk2.getTime()-pocz_del)/1000+"s <br>"
+	 rys(gwiazdy);
+	
+}	 		delayk1=new Date()
+		timestamp+="za rys(gwiazdy) "+(delayk1.getTime()-pocz_del)/1000+"s <br>"
+     if(par.autorefresh.checked == true)
+	  {
+	  if(par.speedup.checked == true)
+	  {
+	     
+	    par.hiddentime.value=par.hiddentime.value*1+1000*60*5
+	    speedDate=new Date()
+		speedDate.setTime(par.hiddentime.value*1)
+		par.rok.value=speedDate.getFullYear()
+	   par.mies.value=speedDate.getMonth()+1
+       par.dzien.value=speedDate.getDate()
+	   par.godz.value=speedDate.getHours()
+	   par.min.value=speedDate.getMinutes()
+	   par.strefa.value=speedDate.getTimezoneOffset()/(-60)
+        zegar=setTimeout("start()",1000);
+
+	  }
+	  else
+	  {
+	   var akt=new Date()
+	  par.rok.value=akt.getFullYear()
+	  par.mies.value=akt.getMonth()+1
+      par.dzien.value=akt.getDate()
+	  par.godz.value=akt.getHours()
+	  par.min.value=akt.getMinutes()
+	  par.strefa.value=akt.getTimezoneOffset()/(-60) 
+	  log+="o<br>"
+	  zegar=setTimeout("start()",30000);
+	  
+		
+		}
+		zapuszczony=true;
+		}
+		delayk=new Date()
+		timestamp+="wygenerowano w "+(delayk.getTime()-pocz_del)/1000+"s <br>"
+		wyswietl(timestamp,"stopka")
+				      wyswietl(log,"horyzont")
+
+		return;
+		
+
+	}
+	
+	function pow(x,y)
+	{
+	return(Math.pow(x,y))
+	}
+	
+	function ksiezyc(JDE)
+	 {
+
+     var T=(JDE-2451545)/36525	 //ulamek wieku jaki uplynol od jd 2000.1.1
+	 var Lp=218.3164591+481267.88134236*T-0.0013268*pow(T,2)+pow(T,3)/538841-pow(T,4)/65194000 //srednia dlugosc ksiezyca
+	 var D=297.8502042+445267.1115168*T-0.00163*pow(T,2)+pow(T,3)/545868-pow(T,4)/113065000 // srednia elongacja ksiezyca
+	 var M=357.5291092+35999.0502909*T-0.0001536*pow(T,2)+pow(T,3)/24290000 // srednia anomalia slonca
+	 var Mp=134.9634114+477198.8676313*T+0.0089970*pow(T,2)+pow(T,3)/69699-pow(T,4)/14712000 // sredia anomalia ksiezyca
+	 var F=93.2720993+483202.0175273*T-0.0034029*pow(T,2)-pow(T,3)/3526000+pow(T,4)/863310000 //srednia odleglosc ksiezyca od wezla wstepujacego
+	 var A1=119.75+131.849*T
+	 var A2=53.09+479264.29*T
+	 var A3=313.45+481266.484*T
+	 var E=1-0.002516*T-0.0000074*pow(T,2);
+	 Lp%=360
+	 Lp=(Lp<0)?360+Lp:Lp
+	 D%=360
+	 D=(D<0)?360+D:D
+	  M%=360
+	 M=(M<0)?360+M:M
+	  Mp%=360
+	 Mp=(Mp<0)?360+Mp:Mp
+	  F%=360
+	 F=(F<0)?360+F:F
+	  A1%=360
+	 A1=(A1<0)?360+A1:A1
+	  A2%=360
+	 A2=(A2<0)?360+A2:A2
+	  A3%=360
+	 A3=(A3<0)?360+A3:A3
+//	 	 arg="T "+T+"<br>"+"Lp "+Lp+"<br>"+"D "+D+"<br>"+"M "+M+"<br>"+"Mp "+Mp+"<br>"+"F "+F+"<br>"+"A1 "+A1 +"<br>"+"A2 "+A2+"<BR> A3 "+A3+"<br>E "+E+"<br>"
+
+	/* T=-0.077221081451
+	 Lp=134.290186
+	 D=113.842309
+	 M=97.643514
+	 Mp=5.150839
+	 F=219.889726
+	 A1=109.57
+	 A2=123.78
+	 A3=229.53
+	 E=1.000194
+*/
+//	 arg+="T "+T+"<br>"+"Lp "+Lp+"<br>"+"D "+D+"<br>"+"M "+M+"<br>"+"Mp "+Mp+"<br>"+"F "+F+"<br>"+"A1 "+A1 +"<br>"+"A2 "+A2+"<BR> A3 "+A3+"<br>E "+E+"<br>"
+	 
+	 var Sl=0
+	 var Sr=0
+	 var Sb=0
+	 for(i=0;i<ks_A.length;i++)
+	  {
+	    var ek=pow(E,Math.abs(ks_A[i][1]))
+	//	arg+=E+" "+ks_A[i][1]+" "+Math.abs(ks_A[i][1])+" "+ek+"<br>"
+	    Sl+=ek*ks_A[i][4]*sins(ks_A[i][0]*D+ks_A[i][1]*M+ks_A[i][2]*Mp+ks_A[i][3]*F)
+		Sr+=ek*ks_A[i][5]*coss(ks_A[i][0]*D+ks_A[i][1]*M+ks_A[i][2]*Mp+ks_A[i][3]*F)
+		//arg+=Sl+" "+Sr+"<br>"
+	  }
+	  	 for(i=0;i<ks_B.length;i++)
+	  {
+	    var ek=pow(E,Math.abs(ks_B[i][1]))
+	    Sb+=ek*ks_B[i][4]*sins(ks_B[i][0]*D+ks_B[i][1]*M+ks_B[i][2]*Mp+ks_B[i][3]*F)
+	  }
+	  
+	  Sl+=3958*sins(A1)+1962*sins(Lp-F)+318*sins(A2)
+	  var l=(Lp+Sl/1000000)%360
+	  var delta=385000.56+Sr/1000
+	  var pi=Math.asin(6378.14/delta)*180/Math.PI
+	  Sb+=-2235*sins(Lp)+382*sins(A3)+175*sins(A1-F)+175*sins(A1+F)+127*sins(Lp-Mp)-115*sins(Lp-Mp)
+	  var b=(Sb/1000000)%360
+	// arg+="<br> Sl "+Sl+"<br> Sb "+Sb+"<br> Sr "+Sr+"<br> l "+l+"<br> delta "+delta+"<br>pi "+pi+"<br> l "+l+"<br>b "+b+"<br>"
+	 var eps=slonce(JDE,3)
+	 var a=Math.atan2((sins(l)*coss(eps)-Math.tan(b*Math.PI/180)*sins(eps)),coss(l))*12/Math.PI
+	 var d=Math.asin(sins(b)*coss(eps)+coss(b)*sins(eps)*sins(l))*180/Math.PI
+//	 arg+="<br>a= "+a+"<br>d= "+d+"<br>"
+	 tbl=new Array(a,d)
+	// wyswietl(arg,"ksiezyc") 
+	return(tbl)
+	 }
+	
+	
+	function wyswietl(co,gdzie)
+	{
+	if(document.all)
+    { 
+     document.all[gdzie].innerHTML=co;
+    }
+    else
+    {
+     if(document.layers)
+     {
+      document.layers[gdzie].document.open();
+      document.layers[gdzie].document.write(co);
+      document.layers[gdzie].document.close();
+     }
+     if(document.getElementById)
+      document.getElementById(gdzie).innerHTML=co;
+    }
+	}
+		
+		function stop()		
+	{
+	if(zapuszczony)
+	 clearTimeout(zegar);
+	 zapuszczony=false;
+	return;
+	}
+
+konkurs=0		
+
+function contest(i)
+ {  
+   napisz="nacisnij zagraj powyżej<br>"
+   if(i<0)
+   {
+   los=Math.floor(Math.random()*nazwy.length)
+   napisz="wskarz na maie gwiazde o nazwie:<br>"+nazwy[los][1]+"<br>"+nazwy[los][0]+"<br>"
+   konkurs=1
+   }
+   if(i>0&&konkurs)
+    {
+	 if((i+1)==nazwy[los][0])
+	  {
+	  napisz+="prawidłowo Gratulacje !<br>"
+	  napisz+="naciśnij zagraj aby grac dalej<br>"
+	  konkurs=0
+	  }
+	  else
+	  {
+	   napisz+="nierawidłowo szukaj dalej<br>lub naciśnij zagraj aby szukać innej gwiazdy"
+	  }
+	}
+	wyswietl(napisz,"horyzont")
+ }
+		
+ function startuj()
+	{
+  	 wyswietl("trwa generowanie mapy<br> proszę czekać","main")
+	stop();
+    	start();
+	return;
+	 }
+ 
+function zero(pole)
+ {
+  par.elements[pole].value=0
+  startuj(); 
+ }
+ 
+ 
+ function rada_zm()
+  {
+  	 var  	k_godz=	par.l_s.value;
+	     var hu=Math.asin(sins(par.szer.value*1)*sins(-1*par.f_s.value)+coss(par.szer.value*1)*coss(-1*par.f_s.value)*cosh(k_godz))*180/Math.PI;
+	
+	     var Az=Math.atan2((coss(-1*par.f_s.value)*sinh(k_godz)),(-coss(par.szer.value*1)*sins(-1*par.f_s.value)+sins(par.szer.value*1)*coss(-1*par.f_s.value)*cosh(k_godz)))*180/Math.PI+180;
+	     Az=(180-(Az<0?Az+360:Az))
+  
+  
+  par.azymut.value=Az;
+  par.wysokosc.value=hu;
+  }
+ 
+ function ah_zm()
+ {
+  H_ang=Math.atan2(coss(par.azymut.value*1)*sins(par.szer.value*1)+Math.tan(par.wysokosc.value*Math.PI/180)*coss(par.szer.value*1),sins(par.azymut.value))*12/Math.PI;
+  del=Math.asin(sins(par.szer.value*1)*sins(par.wysokosc.value)-coss(par.szer.value*1)*coss(par.wysokosc.value)*coss(par.azymut.value))*180/Math.PI;
+ 
+  par.l_s.value=H_ang;
+  par.f_s.value=del;
+ }
+ 
+ 
+</script>
+<style type="text/css">
+   <!--
+   @import url("kolory.css");
+  -->
+</style>
+</head>
+ <body onload='par_pocz(),rozmiary(),startuj()' bgcolor=cdf8ff style=" background-color: grey">
+   
+
+	 <table border=0 cellspacing=0 cellpadding=0>
+	 	 <form name="par">
+		  
+	
+	 <tr><td colspan=3 align=center><a href="javascript:saveSvg(document.getElementById('rys_svg'), 'mapa.svg')"> zapisz mapę</a></td></tr>
+	 <tr><td colspan=3 align=center><a href="javascript: saveSvg(document.getElementById('rys_wierzch'), 'zegar.svg')"> zapisz wierzch </a></td></tr>
+	 <tr><td>rozdrielczosc </td><td><input type="number" name="resolution" size=5 maxlength=4/></td></tr>
+	 <tr><td colspan=3 align=center>Data i czas</td></tr>
+	 <tr><td>rok</td><td>miesiąc</td><td>dzień</td></tr>
+	 <tr><td><input type="text" name="rok" size=4 maxlength=4/></td><td><input type="text" name="mies" size=2 maxlength=2/></td><td><input type="text" name="dzien" size=2 maxlength=2/></td></tr>
+	 <tr><td>godzina</td><td>minuta</td><td></td></tr>
+	 <tr><td><input type="text" name="godz" size=2 maxlength=2/></td><td><input type="text" name="min" size=2 maxlength=2/></td></tr>
+	 <tr><td colspan=3><a href='javascript:teraz()'> ustaw czas aktualny </a></td></tr>
+	 </table>
+	
+	 <table border=0 cellspacing=0 cellpadding=0>
+	 <tr><td colspan=2> współrzędne obserwatora</td></tr>
+	 <tr><td>długość</td><td>szerokość</td></tr>
+     <tr><td><input type="text" name="dl" size=8 maxlength=8/></td><td><input type="text" name="szer" size=9 maxlength=9/></td></tr>
+	 <tr><td colspan=2>strefa czasowa</td></tr>
+	 <tr><td colspan=2>UT+<input type="text" name="strefa" size=2 maxlength=2/></td></tr>
+	 <tr><td colspan=2>ustawienia domyśle</td></tr>
+     <tr><td colspan=2>|<a href='javascript:gdzie_p(0)'> PS </a>|<a href='javascript:gdzie_p(1)'> UJ </a>|<a href='javascript:gdzie_p(2)'> CW </a>|</td></tr>
+     <tr><td>jasność </td><td><input type="text" name="mag" size=8 maxlength=3/></td></tr>
+	 <tr><td>średnica</td><td><input type="text" name="radius" size=8 maxlength=6/></td></tr>
+     <tr><td>środek ha</td><td><input type="text" name="l_s" size=8 maxlength=6/ onchange="rada_zm()">    <a href="javascript:zero('l_s')">zero</a></td></tr>
+     <tr><td>środek delta</td><td><input type="text" name="f_s" size=8 maxlength=6/ onchange="rada_zm()"> <a href="javascript:zero('f_s')">zero</a></td></tr>
+	     <tr><td>środek A</td><td><input type="text" name="azymut" size=8 maxlength=6/ onchange="ah_zm()"> </td></tr>
+		   <tr><td>środek h</td><td><input type="text" name="wysokosc" size=8 maxlength=6/ onchange="ah_zm()">    </td></tr>
+	 </table>
+	 <table border=0 cellspacing=0 cellpadding=0>
+     <tr><td><input type="checkbox" name="autorefresh"></td><td>auto odświeżanie</td></tr>
+	 <tr><td><input type="checkbox" name="speedup"> <input type="hidden" size=15 maxlength=15 name="hiddentime"></td><td>przyspiesz (5min/s)</td></tr>
+     <tr><td><input type="checkbox" name="przesun_na_klik"></td><td> centruj mapę klikniecie</td></tr>
+     <tr><td colspan=2>wyswietl</td></tr>
+   <tr><td><input type="checkbox" name="horyzont"></td><td>horyzont </td></tr>
+   <tr><td><input type="checkbox" name="poludniki"></td><td>południki </td></tr>
+   <tr><td><input type="checkbox" name="rownik"></td><td>równik </td></tr>
+   <tr><td><input type="checkbox" name="ekliptyka"></td><td>ekliptyka </td></tr>
+   <tr><td><input type="checkbox" name="planety"></td><td>planety </td></tr>
+   <tr><td><input type="checkbox" name="slonce"></td><td>słonce </td></tr>
+   <tr><td><input type="checkbox" name="ksiezyc"></td><td>księzyc</td></tr>
+   <tr><td><input type="checkbox" name="proj_hor"></td><td> projekcja horyzontalna</td></tr>
+	  </table>
+	  <br>  rec:<input type="text" name="rec" size=8 maxlength=8 />dec:<input type="text" name="dec" size=8 maxlength=8 /> 
+   
+  <br><a href="javascript:startuj()"> >>>>go<<<< </a>
+   <br>
+   <br>
+   <a href="javascript:contest(-1)"> zagraj </a>
+   
+ </form>
+     <div id="wyb"> </div><br>
+     <div id="main"> </div>
+	    <div id="opis"> </div>
+    <div id="horyzont"> </div>
+	 <div id="stopka"> </div>
+	 <div id="debug"></div>
+ </body>
+</html>
