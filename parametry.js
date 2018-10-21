@@ -56,6 +56,6 @@ kolory:{tlo_kwadrat:'#444444',
 		tlo_skali_azymutu: '#222222',
 		tiki_horyzontu: '#297c10',
 		czcionak_kierunku: '#37c90a',
-		czcionak_azymut: '#1c6505',
+		czcionak_azymut: '#1c6506',
 		},
 }
