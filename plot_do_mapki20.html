@@ -30,6 +30,12 @@
   </script>
 <script type="text/javascript">
 
+/*
+*181125 zamieniona DM na path zamiast polygon
+181125 uratowane versja 20 tam było źle w rozmiarach 
+7878px to 100cm a 200dpi
+*/
+
 
 //ogólnie to zajebiście
 //**zrobione:
@@ -49,25 +55,77 @@
 // zmiana odwzorowania na jaedną funcke
 // zmiana odwzorowania na wykładninicze
 // zmiana zakresu na -50
+// *dogać grupy z id w tagu <g>
+// * podpisać rownolezniki i poludniki
+// * horyzont jako elipsa - to jest zrobione jako path i to lepsze niż elipsa
+// *tarcza zegarowa z jajcem horyzontu do oddzielnego pliku
+// *granice? - ok
+// *droga mleczna?
+// *kolorowe gwiazdy !
+// * rozdzielczość do wyboru zboku
+// *zapis po kliknieciu a nie na starcie
+// wywalić wszystko co niepotrzebne
+// *nazwy gwiazd  --------> problem ---------- uzaleznić go od deklinacji? moze nawet cos(delta)?  ---> wyzezbilem juz w gownie wszystko co się dało i dalej nic chyba problem z tym że katalog gwiazd i katalog nazw mają inne wspolrzedne
+// ^^ i co bylo trzeba nie stękać tylko myśleć, bo jak jest dobr kat i dobra transformacja to wszystko działa az miło :)
+// * miesiace na ekliptyce
+// *ekliptyka jako path a nie elipsa wytedy bedzie mega zgodnosc tikow z linia!!
+// *nazwy gwiazdozbiorów jesli dwuczłonowe to w du liniach   linia 1126
+// *można uzależnić jasność graniczną emek od ich typu tak zeby było więcej planetarnych
+// * zmiana rozmiarow gwiazd
+// *text na tikach ekliptyki obrucony wokol swojego środka i w dodatku dopasowany do rozmiaru i zwrocony prostopadle do ekliptyki
+// * zrobiłem ładny blur giwazd
+// * zrobiłem niby ładny ale kijowo wyglądający blur DM  dibrze na edgeu
+// M! - tylko poprawic kolor i niektore pozycjw
+// zrobic aby rozmiary w wekliptyce były relatywne, a nie sztywne px tiki i kuleczka z miechami
+// glow napisów i linni kształtów, jakieś lepsze kolory
+// rozmiary gwiazd 1674
+// filtr z glowem musi być oddzielnie rowniez w wsad2
+// poprawic edge bo nie ma w nim: dominant-baseline='central'
+// w edge tarcza zegarowa kompletnie sie rozpadła po dodaniu wycinków ze środkiem poza obszarem  zamienic wycinki z wielkich okredow na krzywe zamkniete 3 punkty 
+
 
 
 // *do zrobienia
-// *dogać grupy z id w tagu <g>
-// * podpisać rownolezniki i poludniki
-// horyzont jako elipsa
-// tarcza zegarowa z jajcem horyzontu do oddzielnego pliku
-// *granice?
-// glow napisów i linni kształtów, jakieś lepsze kolory
-// *droga mleczna?
-// M!
-// asteryzmy?
-// *kolorowe gwiazdy !
-// rozdzielczość do wyboru zboku
-// zapis po kliknieciu a nie na starcie
-// wywalić wszystko co niepotrzebne
-// *nazwy gwiazd  --------> problem ---------- uzaleznić go od deklinacji? moze nawet cos(delta)?  ---> wyzzbilem juz w guwnie wszystko co się dało i dalej nic chyba problem z tym że katalog gwiazd i katalog nazw mają inne wspolrzedne
-// * miesiace na ekliptyce
-// pas zodiakalny?
+// powiększyć dolne legendy 
+// indywidualny drop glow dla napisu
+// co z łacznikiem pomiedzy centrum zegara a bokami?
+
+// asteryzmy? ----- nie bąćmy śmieszni
+// pas zodiakalny? - jak wyżej moze jeszcze zrobimy pas dla kzdej z planet i już nic nie bedzie widać na mapie...
+
+//zapis do png???
+/*
+
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+var data = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">' +
+           '<foreignObject width="100%" height="100%">' +
+           '<div xmlns="http://www.w3.org/1999/xhtml" style="font-size:40px">' +
+             '<em>I</em> like ' + 
+             '<span style="color:white; text-shadow:0 0 2px blue;">' +
+             'cheese</span>' +
+           '</div>' +
+           '</foreignObject>' +
+           '</svg>';
+
+var DOMURL = window.URL || window.webkitURL || window;
+
+var img = new Image();
+var svg = new Blob([data], {type: 'image/svg+xml'});
+var url = DOMURL.createObjectURL(svg);
+
+img.onload = function () {
+  ctx.drawImage(img, 0, 0);
+  DOMURL.revokeObjectURL(url);
+  var png_img = canvas.toDataURL("image/png");
+}
+
+img.src = url;
+
+*/
+
+
 
 //window.onresize = rozmiary
 //window.onresize = startuj
@@ -96,6 +154,82 @@ function saveSvg(svgEl, name) {
     downloadLink.click();
     document.body.removeChild(downloadLink);
 }
+
+
+
+  var svgToPng = function (svgText, margin,fill) {
+    // convert an svg text to png using the browser
+    return new Promise(function(resolve, reject) {
+      try {
+        // can use the domUrl function from the browser
+        var domUrl = window.URL || window.webkitURL || window;
+        if (!domUrl) {
+          throw new Error("(browser doesnt support this)")
+        }
+        
+        // figure out the height and width from svg text
+        var match = svgText.match(/height=\"(\d+)/m);
+        var height = match && match[1] ? parseInt(match[1],10) : 200;
+        var match = svgText.match(/width=\"(\d+)/m);
+        var width = match && match[1] ? parseInt(match[1],10) : 200;
+        margin = margin || 0;
+        
+        // it needs a namespace
+        if (!svgText.match(/xmlns=\"/mi)){
+          svgText = svgText.replace ('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ') ;  
+        }
+        
+        // create a canvas element to pass through
+        var canvas = document.createElement("canvas");
+        canvas.width = height+margin*2;
+        canvas.height = width+margin*2;
+        var ctx = canvas.getContext("2d");
+        
+        
+        // make a blob from the svg
+        var svg = new Blob([svgText], {
+          type: "image/svg+xml;charset=utf-8"
+        });
+        
+        // create a dom object for that image
+        var url = domUrl.createObjectURL(svg);
+        
+        // create a new image to hold it the converted type
+        var img = new Image;
+        
+        // when the image is loaded we can get it as base64 url
+        img.onload = function() {
+          // draw it to the canvas
+          ctx.drawImage(this, margin, margin);
+          
+          // if it needs some styling, we need a new canvas
+          if (fill) {
+            var styled = document.createElement("canvas");
+            styled.width = canvas.width;
+            styled.height = canvas.height;
+            var styledCtx = styled.getContext("2d");
+            styledCtx.save();
+            styledCtx.fillStyle = fill;   
+            styledCtx.fillRect(0,0,canvas.width,canvas.height);
+            styledCtx.strokeRect(0,0,canvas.width,canvas.height);
+            styledCtx.restore();
+            styledCtx.drawImage (canvas, 0,0);
+            canvas = styled;
+          }
+          // we don't need the original any more
+          domUrl.revokeObjectURL(url);
+          // now we can resolve the promise, passing the base64 url
+          resolve(canvas.toDataURL());
+        };
+        
+        // load the image
+        img.src = url;
+        
+      } catch (err) {
+        reject('failed to convert svg to png ' + err);
+      }
+    });
+  };
 
 
 function rozmiary()
@@ -132,8 +266,8 @@ if (window.innerWidth && window.innerHeight) {
 	 lmargin=winW-xres-scrool-odstep_od_scrola
 	}
 	
-	kanwa.xres=par.resolution.value//xres
-	kanwa.yres=par.resolution.value//yres
+	kanwa.xres=xres
+	kanwa.yres=yres
 }
 
 kliknieto=0
@@ -503,7 +637,7 @@ function wsch_zach(objekt,JDw,Latw,Longw,str_czas) //objekt=(0>planety,0=slonce)
      par.dzien.value=21
 	 par.godz.value=5
 	 par.min.value=49
-     par.mag.value=5.5;
+     par.mag.value=6.1;
 	 par.l_s.value=0;
 	 par.f_s.value=0;
 	 rada_zm();
@@ -516,7 +650,7 @@ function wsch_zach(objekt,JDw,Latw,Longw,str_czas) //objekt=(0>planety,0=slonce)
 	 par.slonce.checked=false
 	 par.ekliptyka.checked=false
 	 	 par.ksiezyc.checked=false
-		 par.resolution.value=4500
+		 par.zegar_na_mapie.checked=false
 
 	}
     
@@ -542,7 +676,7 @@ function wsch_zach(objekt,JDw,Latw,Longw,str_czas) //objekt=(0>planety,0=slonce)
 	function par_pocz()
 	{
      teraz()
-	 gdzie_p(0)
+	 gdzie_p(2)
 	 zmien(0)
 	 }
 	 
@@ -642,7 +776,7 @@ yt=odwzorowanie(alfat, deltat).y
 
     function rys(tbl)//tab to tablica w niej mamy x,y , rozmiar punktu,
      {
-	 var wsad="<table bgcolor=black onclick='handleEvent(event)' style='width: "+xres+"; height: "+yres+"; position: absolute; left: "+lmargin+"px; top: "+tmargin+"px'><tr><td width="+xres+" height="+yres+">"
+	 var wsad0="<table bgcolor=black onclick='handleEvent(event)' style='width: "+xres+"; height: "+yres+"; position: absolute; left: "+lmargin+"px; top: "+tmargin+"px'><tr><td width="+xres+" height="+yres+">"
 	  
 	  //znajdujemy xmax i ymax ale bez sorta bo w sumie to nie ma sensu sortować po x potm po y jak tablica nie musi byc posortowana wcale
 	 //
@@ -673,16 +807,35 @@ yt=odwzorowanie(alfat, deltat).y
 	   kanwa.xfactor=xfactor
 	   kanwa.yfactor=yfactor
 	 // alert(xmax/Math.PI+"\n"+xmin/Math.PI+"\n"+ymax/Math.PI+"\n"+ymin/Math.PI+"\n"+xfactor+"\n"+yfactor+"\n")
-	 
+	 wsad=""
 	 var rmapy=(transform(0,90).x*1-transform(0,parametry.deklinacja_min).x*1)
 	 var rmapyskala=(transform(0,90).x*1-transform(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc).x*1)
 	wsad+="<svg id='rys_svg' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"
-    wsad2="<svg id='rys_wierzch' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"
-    wsad2+="\t<defs>\r\n"
 	
+	wsad2=""
+    if(par.zegar_na_mapie.checked==false)
+	{
+	wsad2+="<svg id='rys_wierzch' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"
+	wsad2+="\t<defs>\r\n"
+	    wsad2+="\t\t<filter id='dropGlow' >\r\n"
+            wsad2+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='"+parametry.stD_glow_gwiazdy+"' y='-100%' x='-100%' height='300%' width='300%'/>\r\n"
+          wsad2+="\t\t</filter>\r\n"
+	}
+	wsad2+="\t\t<filter id='dropGlowT' >\r\n"
+            wsad2+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='"+parametry.stD_glow_tytul+"' y='-100%' x='-100%' height='300%' width='300%'/>\r\n"
+          wsad2+="\t\t</filter>\r\n"
+		  
 	 wsad+="\t<defs>\r\n"
         wsad+="\t\t<filter id='dropGlow' >\r\n"
-            wsad+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='1' />\r\n"
+            wsad+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='"+parametry.stD_glow_gwiazdy+"' y='-100%' x='-100%' height='300%' width='300%'/>\r\n"
+          wsad+="\t\t</filter>\r\n"
+		   wsad+="\t\t<filter id='dropGlowDM' >\r\n"
+		   
+		
+		   
+		   
+		   
+            wsad+="\t\t\t<feGaussianBlur in='SourceGraphic' stdDeviation='"+parametry.stD_glow_DM+"' />\r\n" //y='-100%' x='-100%' height='300%' width='300%'
           wsad+="\t\t</filter>\r\n"
 		  
 		   wsad+="\t\t<mask id='hole'>\r\n"
@@ -694,14 +847,16 @@ yt=odwzorowanie(alfat, deltat).y
 		  
 		    wsad2+="\t\t<mask id='zegar'>\r\n"
       wsad2+="\t\t\t<rect width='100%' height='100%' fill='black'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
-      wsad2+="\t\t\t<circle r='"+(transform(0,90).x-transform(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc-20).x+parametry.rozmiar_czcionki_godzinnej+1)+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory bedzie przexroczysty
+	  rozmiar_czcionki_G=parametry.rozmiar_czcionki_godzinnej*xres/(180+2*45)
+	  r_skali_zegarowej=(transform(0,90).x-transform(0,parametry.deklinacja_min-parametry.skala_roczna.szerokosc-20).x+rozmiar_czcionki_G+20)
+      wsad2+="\t\t\t<circle r='"+r_skali_zegarowej+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory bedzie przexroczysty
       wsad2+="\t\t\t<circle r='"+rmapyskala+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
 
     wsad2+="\r\n\t\t</mask>" 
 	
 		  
 		  
-		  h=-2 //glebokosc ze wzgledu na refrakcje
+		  h=parametry.horyzont.gorny_brzeg //glebokosc ze wzgledu na refrakcje
 		A=0;
 	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
@@ -709,7 +864,7 @@ yt=odwzorowanie(alfat, deltat).y
 	     y0=transform(HA_h,del_h*180/Math.PI).y
 		 liniahorA="M"+x0+","+y0+" C"
 		 
-		 h=-10;
+		 h=parametry.horyzont.brzeg_skali;
 		 	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 	    	var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
 	    x0=transform(HA_h,del_h*180/Math.PI).x
@@ -717,7 +872,7 @@ yt=odwzorowanie(alfat, deltat).y
 		 liniahorSkala="M"+x0+","+y0+" C"
 		 
 		for(A=1;A<=360;A++){
-		 h=-2
+		 h=parametry.horyzont.gorny_brzeg
 	     var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
 	   
@@ -726,7 +881,7 @@ yt=odwzorowanie(alfat, deltat).y
 		// console.log(del_h+" "+HA_h+" ")
 		 liniahorA+=""+x0+","+y0+" "
 		 		 
-				 h=-10
+				 h=parametry.horyzont.brzeg_skali
 				 
 	     var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
@@ -742,14 +897,28 @@ yt=odwzorowanie(alfat, deltat).y
 		  
 		  
 		  
-		  
+		  /* usunięte skrzydełka do obrotu */
 		  
 		  
 		  
 		  		   wsad2+="\t\t<mask id='hormask'>\r\n"
-				         wsad2+="\t\t\t<rect width='100%' height='100%' fill='white'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy
+				         wsad2+="\t\t\t<rect width='100%' height='100%' fill='white'/>\r\n"  //pełny kwadrat o rozmiarze całej kanwy //
                          wsad2+="\t\t\t<circle r='"+rmapyskala+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
-                         wsad2+="\t\t\t<circle r='"+rmapy+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory bedzie przexroczysty
+		/*				 //dodajemy jeszcze dwa koła które wytną nam obszar do obrotu
+						  y0=(transform(0,90).x*1-(r_skali_zegarowej/2))//srodek - polowa
+						  y2=(transform(0,90).x*1+(r_skali_zegarowej/2))//srodek + polowa
+						  yc=transform(0,90).x*1
+						  xl=(xres/2-(r_skali_zegarowej))*2//srodek - r
+						  xp=xres-xl//srodek + r
+						   wsad2+="<path d='M 0 "+y0+" S "+xl+" "+yc+" 0 "+y2+" Z' stroke='none'  stroke-width='5' fill='black' />"
+						   						   wsad2+="<path d='M "+xres+" "+y0+" S "+xp+" "+yc+" "+xres+" "+y2+" Z' stroke='none'  stroke-width='5' fill='black' />"
+
+					//	 wsad2+="\t\t\t<circle r='"+r_skali_zegarowej+"' cx='"+(transform(0,90).x*1-(r_skali_zegarowej*2))+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
+					//	 wsad2+="\t\t\t<circle r='"+r_skali_zegarowej+"' cx='"+(transform(0,90).x*1+(r_skali_zegarowej*2))+"' cy='"+transform(0,90).y*1+"' fill='black'/>"  //wycinek z niego ktory bedzie przexroczysty
+//console.log(wsad2)
+						 //
+			*/			 
+                         wsad2+="\t\t\t<circle r='"+rmapy+"' cx='"+transform(0,90).x*1+"' cy='"+transform(0,90).y*1+"' fill='white'/>"  //wycinek z niego ktory nie bedzie przexroczysty
 						 wsad2+="\r\n\t\t<path d='"+liniahorA+"Z' fill='black' stroke='none'  fill-opacity='1' />"
 
 
@@ -762,9 +931,17 @@ yt=odwzorowanie(alfat, deltat).y
 
 
     wsad2+="\r\n\t\t</mask>"
- wsad2+="\r\n\t</defs>"
-		  //	wsad2+="\r\n\t<rect width='100%' height='100%' fill='white' />"
-
+	
+ if(par.zegar_na_mapie.checked==true)
+	{	
+	wsad+=wsad2
+	wsad2=""
+	}
+	else
+	 {
+		wsad2+="\r\n\t</defs>"
+    	wsad2+="\r\n\t<rect width='100%' height='100%' fill='white' />"
+     }
 		  
 		  
     wsad+="\r\n\t</defs>"
@@ -772,8 +949,15 @@ yt=odwzorowanie(alfat, deltat).y
 	wsad+="\r\n\t<rect width='100%' height='100%' fill='"+parametry.kolory.tlo_kwadrat+"' />"
 	
 	
-	 	
-	
+	 	szer_k=2//px
+	//wsad+="\r\n\t\t<circle cx="+(par.resolution.value/2)+" cy="+(par.resolution.value/2)+" r="+(par.resolution.value-2*szer_k)/2+" fill='"+parametry.kolory.tlo_skali_rocznej+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='"+szer_k+"' />"
+//krawędź do obracania
+	wsad+="\r\n\t\t<circle cx='50%' cy='50%' r="+(xres-2*szer_k)/2+" fill='"+parametry.kolory.tlo_mapy+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='"+szer_k+"' />"
+// podświetlenie skali rocznej
+	wsad+="\r\n\t\t<circle cx='50%' cy='50%' r="+(r_skali_zegarowej)+" fill='white' stroke='"+parametry.kolory.krawedz+"' stroke-width='"+szer_k+"' />"
+
+
+
     wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+rmapyskala+" fill='"+parametry.kolory.tlo_skali_rocznej+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='1.5' />"
     wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+rmapy+" fill='"+parametry.kolory.tlo_mapy+"' stroke='"+parametry.kolory.krawedz+"' stroke-width='1.5' />"
 	wsad+="\r\n\t</g>"
@@ -782,30 +966,44 @@ yt=odwzorowanie(alfat, deltat).y
 	
 
 	
+//2018-11-25 -- zamieniac to na taka krzywa jak w horyzoncie?
 
 	//DM  pomobinowane żeby się dobrze plotowało trzba uważać na to co pod horyzontem a przede wszystkim kolejnośc punktów musi być odpowiednia a w danych sa skoki.
-	  var poly_point=""
-	 for(i=4517;i<5469;i+=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+	  var poly_point="M"+transform(dm[4517][0],dm[4517][1]).x*1+","+transform(dm[4517][0],dm[4517][1]).y*1+" C"; //""
+	   //parametry.inkrement_drogi_mlecznej
+	 for(i=4518;i<5468;i+=parametry.inkrement_drogi_mlecznej)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
 	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
 		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
 		
-	 for(i=0;i<3541;i+=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+					poly_point+=transform(dm[5468][0],dm[5468][1]).x*1+","+transform(dm[5468][0],dm[5468][1]).y*1+" ";
+
+		
+	 for(i=0;i<3540;i+=parametry.inkrement_drogi_mlecznej)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
 	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
 		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
 
-     for(i=7599;i>5470;i-=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+			poly_point+=transform(dm[3540][0],dm[3540][1]).x*1+","+transform(dm[3540][0],dm[3540][1]).y*1+" ";
+
+
+     for(i=7599;i>5471;i-=parametry.inkrement_drogi_mlecznej)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
 	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
 		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
+
+			poly_point+=transform(dm[5470][0],dm[5470][1]).x*1+","+transform(dm[5470][0],dm[5470][1]).y*1+" ";
+
 	
-     for(i=9150;i>8000;i-=1)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
+     for(i=9150;i>8000;i-=parametry.inkrement_drogi_mlecznej)  // na razie co 50 punkt bo jest ich 10000 sic!?   dm.length;  //prawy brzeg (2) 0 do 3541 i najpierw to (1) 4517;i<5469  lewy brzeg: (3) i=5470;i<7600 odwrotnie, (4) 8000;i<9151 odwrotnie
 	   if(dm[i][1]>parametry.deklinacja_min-parametry.skala_roczna.szerokosc)
 		   	poly_point+=transform(dm[i][0],dm[i][1]).x*1+","+transform(dm[i][0],dm[i][1]).y*1+" ";
-		
+			
+			poly_point+=transform(dm[7999][0],dm[7999][1]).x*1+","+transform(dm[7999][0],dm[7999][1]).y*1+" ";
+			poly_point+="Z"
 	  
 		  
 		 // console.log(poly_point)
-	wsad+="\r\n\t<g id='DM'>"	 
-	wsad+="\r\n\t\t<polygon points='"+poly_point+"' style='fill:"+parametry.kolory.DM+";' />" // fill-rule:evenodd;
+	wsad+="\r\n\t<g id='DM' filter='url(#dropGlowDM)'>"	 
+	wsad+="\r\n\t\t<path d='"+poly_point+"' style='fill:"+parametry.kolory.DM+";' />" // fill-rule:evenodd;
+	//wsad+="\r\n\t\t<polygon points='"+poly_point+"' style='fill:"+parametry.kolory.DM+";' />" // fill-rule:evenodd;
 	wsad+="\r\n\t</g>"
 	   //rysunki
 	  //rysunki są tutaj żeby to białe kułko je przykryło jak wystają
@@ -814,9 +1012,11 @@ yt=odwzorowanie(alfat, deltat).y
 		 if(rysunki[i][1]>(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)&&rysunki[i][3]>(parametry.deklinacja_min-parametry.skala_roczna.szerokosc))
 		  {
 		   	
-			wsad+="\r\n\t\t<line x1="+transform(rysunki[i][0],rysunki[i][1]).x*1+" y1="+transform(rysunki[i][0],rysunki[i][1]).y*1+" x2="+transform(rysunki[i][2],rysunki[i][3]).x*1+" y2="+transform(rysunki[i][2],rysunki[i][3]).y*1+"  stroke-width='0.5' stroke='"+parametry.kolory.rysunki+"' />"
+			wsad+="\r\n\t\t<line x1="+transform(rysunki[i][0],rysunki[i][1]).x*1+" y1="+transform(rysunki[i][0],rysunki[i][1]).y*1+" x2="+transform(rysunki[i][2],rysunki[i][3]).x*1+" y2="+transform(rysunki[i][2],rysunki[i][3]).y*1+"  stroke-width='"+parametry.rysunki_grubosc+"' stroke='"+parametry.kolory.rysunki+"' />"
 
 		  }
+		  
+		  
 		  
 		  wsad+="\r\n\t</g>"
 		  wsad+="\r\n\t<g id='granice'>"
@@ -832,7 +1032,7 @@ yt=odwzorowanie(alfat, deltat).y
 			 if(em)
 			  {
 			  ile_linii++
-			  de+="M"+transform(granice[i][0],granice[i][1]).x*1+","+transform(granice[i][0],granice[i][1]).y*1+" C"
+			  de+="M"+transform(granice[i][0],granice[i][1]).x*1+","+transform(granice[i][0],granice[i][1]).y*1+" S"
 			  em=0;
 			  }
 			  else
@@ -874,7 +1074,7 @@ yt=odwzorowanie(alfat, deltat).y
 				   }
 				 }
 				 
-			    wsad+="\r\n\t\t<path d='"+de+"'   fill='none' stroke-dasharray='5,5' stroke='"+parametry.kolory.granice+"' stroke-width='0.5' />"
+			    wsad+="\r\n\t\t<path d='"+de+"'   fill='none' stroke-dasharray='20 20' stroke='"+parametry.kolory.granice+"' stroke-width='"+parametry.grubosc_granice+"' />"
 			    de=""
 			    em=1
 			   }
@@ -909,14 +1109,37 @@ yt=odwzorowanie(alfat, deltat).y
 		   {
 		    pocz=parametry.skala_roczna.tiki.dlugosc.piec();
 		   stroke=parametry.skala_roczna.tiki.grubosc.piec();//1
+		   
+		   if(biegnacyDzien.getDate()!=15){
+		   var mx=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).x
+			 var my=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).y
+			   
+			var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI-180
+			var rozmiar_czcionki_dni=0.9*parametry.skala_roczna.rozmiar_czcionki_dni*xres* (parametry.skala_roczna.tiki.dlugosc.dziesiec()-parametry.skala_roczna.tiki.dlugosc.zwykly())/(180+2*Math.abs(parametry.deklinacja_min)+2*parametry.skala_roczna.szerokosc)
+			  // console.log(rozmiar_czcionki)
+			wsad+="\r\n\t\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_dni+"px; fill: "+parametry.kolory.tlo_skali_azymutu+"' transform='rotate("+kont+" "+mx+","+my+")'>"+(biegnacyDzien.getDate())+"</text>"
+			 }
+		   
+		   
+		   
 			}
 		   if(biegnacyDzien.getDate()%10==0)
 		   {
 		   pocz=parametry.skala_roczna.tiki.dlugosc.dziesiec();
 		   stroke=parametry.skala_roczna.tiki.grubosc.dziesiec();//1.5
+		   /*
+		   	 var mx=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).x
+			 var my=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).y
+			   
+			var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI-180
+			var rozmiar_czcionki_dni=parametry.skala_roczna.rozmiar_czcionki_dni*xres* (parametry.skala_roczna.tiki.dlugosc.dziesiec()-parametry.skala_roczna.tiki.dlugosc.zwykly())/(180+2*Math.abs(parametry.deklinacja_min)+2*parametry.skala_roczna.szerokosc)
+			  // console.log(rozmiar_czcionki)
+			wsad+="\r\n\t\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_dni+"px;' transform='rotate("+kont+" "+mx+","+my+")'>"+(biegnacyDzien.getDate()<10?("0"+biegnacyDzien.getDate()):biegnacyDzien.getDate())+"</text>"
+			 */
+		   
 			}
 			
-		   if(nastepnyDzien.getDate()==1)
+		   if(nastepnyDzien.getDate()==2)
 		    {
 		    pocz=parametry.skala_roczna.tiki.dlugosc.miesiac();
 		    stroke=parametry.skala_roczna.tiki.grubosc.miesiac();//2
@@ -934,7 +1157,7 @@ yt=odwzorowanie(alfat, deltat).y
 			   var my=transform(pol+korr,parametry.skala_roczna.tiki.dlugosc.dziesiec()+3).y
 			   
 			   var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI-180
-			   var rozmiar_czcionki=xres* (parametry.skala_roczna.tiki.dlugosc.dziesiec()-parametry.skala_roczna.tiki.dlugosc.zwykly())/(180+2*Math.abs(parametry.deklinacja_min)+2*parametry.skala_roczna.szerokosc)
+			   var rozmiar_czcionki=0.9*xres* (parametry.skala_roczna.tiki.dlugosc.dziesiec()-parametry.skala_roczna.tiki.dlugosc.zwykly())/(180+2*Math.abs(parametry.deklinacja_min)+2*parametry.skala_roczna.szerokosc)
 			  // console.log(rozmiar_czcionki)
 			   wsad+="\r\n\t\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;' transform='rotate("+kont+" "+mx+","+my+")'>"+mies+"</text>"
 			  }
@@ -955,12 +1178,12 @@ yt=odwzorowanie(alfat, deltat).y
 		// console.log("r  : "+(transform(0,90).x*1-transform(0,0).x*1)+"\r\n")
 		// console.log("<circle cx='"+(transform(0,90).x*1)+"' cy='"+(transform(0,90).y*1)+"' r='"+(transform(0,90).x*1-transform(0,0).x*1)+"' fill='none' stroke='999999'/>")
 		wsad+="\r\n\t<g id='rownik'>"
-		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,0).x*1)+" fill='none' stroke='"+parametry.kolory.rownik+"' stroke-width='1.5' />"
+		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,0).x*1)+" fill='none' stroke='"+parametry.kolory.rownik+"' stroke-width='"+parametry.rownik_grubosc+"' />"
 		 wsad+="\r\n\t</g>"
 		 
 		 //ekliptyka 
 		 
-		 
+		/* 
 		 nepd=66.5607//deg
 		 nepa=18//h
 		 nepdr=-23.4393//deg
@@ -980,20 +1203,21 @@ yt=odwzorowanie(alfat, deltat).y
        wsad+="\r\n\t<g id='ekliptyka'>"
 		 wsad+="\r\n\t\t<ellipse cx="+(transform(nepa,nepd).x*1)+" cy="+srodeky+" rx="+hx+" ry="+hy+" fill='none' stroke='"+parametry.kolory.ekliptyka_linia+"' stroke-width='1.5' fill-opacity='0.2'/>"
 		wsad+="\r\n\t</g>"
-		 
+		 */
 	//ekliptyka II z datami
 	    
-		   wsad+="\r\n\t<g id='ekliptykaII'>"
+		   wsad_ekliptyka=""
 		   
 		   skala_slonca=new Date(2018,02,24,12,0,0,0) //24 marca
 		   JDo=JD_C(2018,02,24,12,0,0,0)
 		   	miesg=["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"]
+			var linia_ekliptyki=""
 		   for(i=0;i<365;i++)
 		   {
 	
 		   biegnacyDzien=new Date(skala_slonca.getTime()+i*86400000)
            nastepnyDzien=new Date(skala_slonca.getTime()+(i+1)*86400000)
-		    rozmiar_ekl=1
+		    rozmiar_ekl=3
 			napis=""
 			 JD=JDo+i
 			 ras=slonce(JD,1)// ra
@@ -1001,27 +1225,46 @@ yt=odwzorowanie(alfat, deltat).y
 			//   console.log(ras+" "+das)
 			   var mx=transform(ras*1,das*1).x
 			   var my=transform(ras*1,das*1).y
-			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   if(i==0)
+			    {
+			    linia_ekliptyki+="M"+mx+","+my+" C"
+				ekliptyka_end=""+mx+","+my+" Z"//to aby zamknac ekliptyke bo sie nie zamyka
+				}
+				
+				linia_ekliptyki+=+mx+","+my+" "
+				//biegun ekliptyki:
+				nepd=66.5607//deg
+		        nepa=18//h
+				
+				//transform(nepa*1,nepd*1).x
+				
+				//te tiki by mogły być skierowane zgodnie z ekliptycznym układem odniesienia
+				 var kat=Math.atan2(transform(nepa*1,nepd*1).y-my,mx-transform(nepa*1,nepd*1).x)*180/Math.PI //kąt w biegunowym układzie odniesieiani tiki w kierunku bieguna ekliptyki
+			  // var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
 			   
-			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
-			   var mxp=transform(ras*1,das*1).x+2*coss(kat)
-			   var myp=transform(ras*1,das*1).y-2*sins(kat)
+			   var rozmiar_czcionki=parametry.ekliptyka.rozmiar_czcionki*xres/(180+2*45)
+			   
+			   var rtik=parametry.ekliptyka.tiki.jedend*xres/(180+2*45)
+			   var mxp=transform(ras*1,das*1).x+rtik*coss(kat) //pozycja texu
+			   var myp=transform(ras*1,das*1).y-rtik*sins(kat)
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  //to jest kat pod jakim nalezy obrucic prsta aby byla prostopadla do radialnej w biegnowym
+			    rtik=parametry.ekliptyka.tiki.jedeng*xres/(180+2*45)
+			   var mxk=transform(ras*1,das*1).x-rtik*coss(kat)
+			   var myk=transform(ras*1,das*1).y+rtik*sins(kat)
 			   
-			   var mxk=transform(ras*1,das*1).x-4*coss(kat)
-			   var myk=transform(ras*1,das*1).y+4*sins(kat)
-			   
-			   wsad+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='0.5' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
+			   wsad_ekliptyka+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='"+parametry.ekliptyka.tiki.grubosc_jeden+"' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
 			   
 			if(biegnacyDzien.getDate()%5==0)
 			  {
 		      rozmiar_ekl=3
-			   var mxp=transform(ras*1,das*1).x+3*coss(kat)
-			   var myp=transform(ras*1,das*1).y-3*sins(kat)
-			   var mxk=transform(ras*1,das*1).x-5*coss(kat)
-			   var myk=transform(ras*1,das*1).y+5*sins(kat)
-						   wsad+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='1' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
+			  var rtik=parametry.ekliptyka.tiki.piecd*xres/(180+2*45)
+			   var mxp=transform(ras*1,das*1).x+rtik*coss(kat)
+			   var myp=transform(ras*1,das*1).y-rtik*sins(kat)
+			   var rtik=parametry.ekliptyka.tiki.piecg*xres/(180+2*45)
+			   var mxk=transform(ras*1,das*1).x-rtik*coss(kat)
+			   var myk=transform(ras*1,das*1).y+rtik*sins(kat)
+						   wsad_ekliptyka+="\r\n\t\t<line x1="+mxp*1+" y1="+myp*1+" x2="+mxk*1+" y2="+myk*1+" fill-opacity='0.5' stroke-width='"+parametry.ekliptyka.tiki.grubosc_piec+"' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
    
 			//  wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_ekl+"' fill='#ffff77' fill-opacity='0.5'/>"
 			
@@ -1029,22 +1272,47 @@ yt=odwzorowanie(alfat, deltat).y
 			  
 		   if(nastepnyDzien.getDate()==1)
 		    {
-			 rozmiar_ekl=6
+			 rozmiar_ekl=parametry.ekliptyka.tiki.miesiac*xres/(180+2*45)
+			 var kont=Math.atan2(transform(nepa*1,nepd*1).x-mx,my-transform(nepa*1,nepd*1).y)*180/Math.PI
+			 
+			 canvas = document.createElement('canvas');
+			 ctx = canvas.getContext('2d');
+			 
+			 ctx.font=""+rozmiar_czcionki+"px Calabri";
+			 lineHeight=ctx.measureText('M').width*0.8;
+			 
+			 var mxp=transform(ras*1,das*1).x+ lineHeight/2*coss(kat)
+			   var myp=transform(ras*1,das*1).y-lineHeight/2*sins(kat)
 			// napis="\r\n\t\t <text text-anchor='middle' x='"+mxp+"' y='"+myp+"'  transform='rotate("+kont+" "+mxp+","+myp+")' fill='#ffff00' style='font-family: Calabri; font-size: 20px;' >"+Math.floor(kat*1)+" "+Math.floor(sins(kat*1)*100)/100+" "+Math.floor(coss(kat*1)*100)/100+"</text>"
-			 napis="\r\n\t\t <text text-anchor='middle' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;'  transform='rotate("+kont+" "+mxp+","+myp+")'>"+miesg[nastepnyDzien.getMonth()]+"</text>"
-			 wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_ekl+"' fill-opacity='0.7' fill='"+parametry.kolory.ekliptyka_tiki+"' />"
-			  wsad+=napis;
+			// napis="\r\n\t\t <text text-anchor='middle'  dominant-baseline='central' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;'  transform='rotate("+kont+" "+mx+","+my+")'>"+miesg[nastepnyDzien.getMonth()]+"</text>"
+			 napis="\r\n\t\t <text text-anchor='middle'   x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px;'  transform='rotate("+kont+" "+mxp+","+myp+")'>"+miesg[nastepnyDzien.getMonth()]+"</text>"
+			 wsad_ekliptyka+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_ekl+"' fill-opacity='"+parametry.ekliptyka.prezroczystoscM+"' fill='"+parametry.kolory.ekliptyka_tiki+"' />"
+			  wsad_ekliptyka+=napis;
 			}
-		      
+		    if(i==20){
+			  ekliptyka_do_legendy_wsad=wsad_ekliptyka
+			 ekliptyka_do_legendy=linia_ekliptyki
+			 }
 		   }
 		 //wsad+="\r\n\t\t<ellipse cx="+(transform(nepa,nepd).x*1)+" cy="+srodeky+" rx="+hx+" ry="+hy+" fill='none' stroke='#ffff77' stroke-width='1.5' />"
-		wsad+="\r\n\t</g>"
+		wsad_ekliptyka+="\r\n\t</g>"
+		
+		wsad+="\r\n\t<g id='ekliptyka krzywa'>"
+		 wsad+="<path d='"+linia_ekliptyki+""+ekliptyka_end+"' fill='none' stroke='"+parametry.kolory.ekliptyka_linia+"' stroke-width='"+parametry.ekliptyka.tiki.grubosc_linii+"' fill-opacity='0.2' />"
+		 wsad+="\r\n\t</g>"
+		wsad+="\r\n\t<g id='ekliptykaII'>" 
+		 wsad+=wsad_ekliptyka;
 		 
 		 
 		 //rownolezniki
+		 
+		 
 		 wsad+="\r\n\t<g id='rownolezniki'>"
+		 
+		 rozmiar_czcionki=parametry.rozmiar_czcionki_rozwnolezniki*xres/(180+2*45)
+		 
 		 for(lez=80;lez>parametry.deklinacja_min;lez-=parametry.skok_rownoleznikow)//(lez=-40;lez<90;lez+=20)
-		 {
+		  { 
 		   var mxp=transform(1,lez+0.3).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
 			   var myp=transform(1,lez+0.3).y//+(rozmiar)*sins(kat)
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
@@ -1054,7 +1322,14 @@ yt=odwzorowanie(alfat, deltat).y
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
 			   			 wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.rownolezniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+lez+"&#176;</text>" //
 
-		 		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,lez).x*1)+" fill='none' stroke='"+parametry.kolory.rownolezniki+"' stroke-width='0.5' />"
+                grubosc=parametry.poludniki.grubosc
+				kolor=parametry.kolory.rownolezniki
+				if(lez==0)
+				 {
+				  grubosc=parametry.poludniki.grubosc*2;
+				  kolor=parametry.kolory.rownik;
+				 }
+		 		 wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,lez).x*1)+" fill='none' stroke='"+kolor+"' stroke-width='"+grubosc+"' />"
 				 }
         wsad+="\r\n\t</g>"
 		  
@@ -1066,7 +1341,7 @@ yt=odwzorowanie(alfat, deltat).y
 		   
 		     
 			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
-			    var rozmiar_czcionki=xres* 1.2/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			    var rozmiar_czcionki=parametry.rozmiar_czcionki_poludniki*xres/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
 			   var mxp=transform(pol-0.1,parametry.poludniki.text_delta_dwa).x//-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
 			   var myp=transform(pol-0.1,parametry.poludniki.text_delta_dwa).y//+(rozmiar)*sins(kat)
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
@@ -1078,7 +1353,7 @@ yt=odwzorowanie(alfat, deltat).y
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  
 			 wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.poludniki_opis+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+pol+"h</text>" //
 
-	       wsad+=" <line x1="+transform(pol,parametry.deklinacja_min).x*1+" y1="+transform(pol,parametry.deklinacja_min).y*1+" x2="+transform(pol,koniec).x*1+" y2="+transform(pol,koniec).y*1+"  stroke-width='0.5' stroke='"+parametry.kolory.poludniki+"'/>"
+	       wsad+=" <line x1="+transform(pol,parametry.deklinacja_min).x*1+" y1="+transform(pol,parametry.deklinacja_min).y*1+" x2="+transform(pol,koniec).x*1+" y2="+transform(pol,koniec).y*1+"  stroke-width='"+parametry.poludniki.grubosc+"' stroke='"+parametry.kolory.poludniki+"'/>"
 		   }
 	     wsad+="\r\n\t</g>"
 	  
@@ -1094,16 +1369,39 @@ yt=odwzorowanie(alfat, deltat).y
 			   var my=transform(labele_const[i][0]*1,labele_const[i][1]*1).y
 			   //console.log(mx+""+my)
 			   var kont=Math.atan2(xres/2-mx,my-yres/2)*180/Math.PI
-			   var rozmiar_czcionki=xres* 2/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
- 			   wsad+="\r\n\t\t <text text-anchor='left' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; stroke: "+parametry.kolory.nazwy_gwiazdozbiorow_stroke+"; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' transform='rotate("+kont+" "+mx+","+my+")'>"+labele_const[i][3]+"</text>" //
+			   
+			   var rozmiar_czcionki=parametry.rozmiar_czcionki_nazwy*xres/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   
+			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kat=(kat<0)?360+kat:kat
+			   
+			   
+			   if(labele_const[i][3].indexOf(' ')==-1)
+			    {
+				wsad+="\r\n\t\t <text text-anchor='left' x='"+mx+"' y='"+my+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; stroke: "+parametry.kolory.nazwy_gwiazdozbiorow_stroke+"; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' transform='rotate("+kont+" "+mx+","+my+")'>"+labele_const[i][3]+"</text>" //
+				}
+			   else
+			    {
+				index=labele_const[i][3].indexOf(' ')
+				text1=labele_const[i][3].substr(0,index)  //to trzeba splitnoc na dwie czesci i dac druga do tex 2
+				text2=labele_const[i][3].substr(index+1)
+				mxt1=mx-(rozmiar_czcionki)/2*coss(kat) 
+				myt1=my+(rozmiar_czcionki)/2*sins(kat)
+				mxt2=mx+(rozmiar_czcionki)/2*coss(kat) 
+				myt2=my-(rozmiar_czcionki)/2*sins(kat)
+				wsad+="\r\n\t\t <text text-anchor='center' x='"+mxt1+"' y='"+myt1+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; stroke: "+parametry.kolory.nazwy_gwiazdozbiorow_stroke+"; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' transform='rotate("+kont+" "+mxt1+","+myt1+")'>"+text1+"</text>" //
+				wsad+="\r\n\t\t <text text-anchor='center' x='"+mxt2+"' y='"+myt2+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; stroke: "+parametry.kolory.nazwy_gwiazdozbiorow_stroke+"; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' transform='rotate("+kont+" "+mxt2+","+myt2+")'>"+text2+"</text>" //
+				}
+ 			   
 
 		  }
 	wsad+="\r\n\t</g>"
-	wsad+="\r\n\t<g id='gwiazdy'>"
+	wsad_gwiazd="";
+	wsad+="\r\n\t<g id='gwiazdy_cien' filter='url(#dropGlow)'>"
 	  for(i=0;i<tbl.length;i++)
 	  {
-	  	rozm_x=tbl[i][2];
-	    rozm_y=tbl[i][2];
+	  	rozm_x=tbl[i][2]*parametry.rozmiar_gwiazd*xres/(180+2*45);
+	    rozm_y=tbl[i][2]*parametry.rozmiar_gwiazd*xres/(180+2*45);
 		
 	    polx=centruj.x(tbl[i][0])//(tbl[i][0]-xmin)/xfactor-rozm_x/2;
 	    poly=centruj.y(tbl[i][1])//(yres)-(tbl[i][1]-ymin)/yfactor-rozm_y/2;
@@ -1111,18 +1409,25 @@ yt=odwzorowanie(alfat, deltat).y
   
       //  var kol=(tbl[i][3]=="g")?"white":((tbl[i][3]=="cz")?"red":((tbl[i][3]=="nb")?"blue":"green"))
 	  var kol_hr="";
+	   kol_hr="#ffffff"
 	  var tbl_kol={"g": "#ffffff","cz": "#ff7777","nb": "#7777ff","hor": "#55ff55","ekl": "#ffff77","rown": "#3333ff","rownp": "#77ffff","slo": "#ffff00","ks": "#999999","Mercury": "#ffc644","Venus": "#ffc644","Mars": "#cc0000","Jupiter": "#ffc644","Saturn": "#ffc644"}
       if(!Array.isArray(tbl[i][3]))
          kol_hr=tbl_kol[tbl[i][3]]//(tbl[i][3]=="g")?"#ffffff":((tbl[i][3]=="cz")?"#ff7777":((tbl[i][3]=="nb")?"#7777ff":"green"))
       else
 	   {
-	    HR=kolory.typ[tbl[i][3][0]]+tbl[i][3][1]
+	    
+	    HR=kolory.typ[tbl[i][3][0]]-tbl[i][3][1]
 		R=Math.floor(kolory.R.a*Math.tanh((HR+kolory.R.b)*kolory.R.c)+kolory.R.d).toString(16);
 		G=Math.floor(kolory.G.a*pow(HR,4)+kolory.G.b*pow(HR,3)+kolory.G.c*pow(HR,2)+kolory.G.d*HR+kolory.G.e).toString(16);
-		B=Math.floor(kolory.B.a*Math.tanh((HR+kolory.B.b)*kolory.B.c)+kolory.B.d).toString(16);
-	   kol_hr="#"+R+""+G+""+B;
-	
+		B=Math.floor(kolory.B.a*Math.tanh((HR+kolory.B.b)*kolory.B.c)+kolory.B.d)
+		///B czarne gwiazdy przez B
 	   
+	   B=(B<0?0:B).toString(16);
+			B=(B.length<2?("0"+B):B)
+	   
+//	if(tbl[i][3][0]=="C")
+//		B="00"//console.log(R+"|"+G+"|"+B)
+	   kol_hr="#"+R+""+G+""+B;
 	   }
 	  //  wsad+="<AREA SHAPE=circle COORDS="+polx+","+poly+","+rozm_x/2+" HREF='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'><a href='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'>";
 	   //  wsad+="<hr size="+rozm_y+" width="+rozm_y+" color="+kol_hr+" style='position: absolute; left: "+polx+"px; top: "+poly+"px; color: "+kol_hr+"' onclick='javascript:opis("+tbl[i][4]+","+tbl[i][0]+"),contest("+tbl[i][4]+")'>"//</a>"; 
@@ -1130,15 +1435,239 @@ yt=odwzorowanie(alfat, deltat).y
         var znik=''
           if(tbl[i][3]=="corner")
 		   znik=" style='fill-opacity: 0;'" // znikniecie 4 kropek robiacych rozmiar kuleczka.
-        wsad+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*1.2+"' fill='"+kol_hr+"' filter='url(#dropGlow)' "+znik+"/>"
-		 wsad+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*0.8+"' fill='"+kol_hr+"' "+znik+" />"     		
+		  
+		   
+        wsad+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*parametry.rozmiar_glow_gwiazd+"' fill='"+kol_hr+"'  "+znik+"/>"
+		 wsad_gwiazd+="\r\n\t\t<circle cx='"+polx+"' cy='"+poly+"' r='"+(rozm_y/2)*parametry.rozmiar_gwiazd+"' fill='"+kol_hr+"' "+znik+" />"     		
 	  // wsad+="<img src="+tbl[i][3]+".png height="+rozm_y+" style='position: absolute; left: "+polx+"px; top: "+poly+"px'>"//</a>"
 	  }
 	  wsad+="\r\n\t</g>"
+	  wsad+="\r\n\t<g id='gwiazdy'>"
+	  wsad+=wsad_gwiazd;
+	  wsad+="\r\n\t</g>"
 	  
+//SKALE	  
+	  //skala kolorow , skala wielkosci gwiazdowych, symbole mglawic, opis linii, napis tytuł
+	    skala_legend=parametry.skala_legend
 	  
+	   const koloryHR=Object.keys(kolory.typ)
+	   rozmiar_czcionki=parametry.rozmiar_czcionki_azymut*xres/(180+2*45)
+	     kx=0.0
+		 ky=0.0
+		 parametr_szerokosci=(rozmiar_czcionki)*2
+		 
+		 var skala_kolorow="\r\n\t<g id='skala_kolorow' transform=' translate("+(par.resolution.value-150-(parametr_szerokosci*10*1.15))+" 150)'>"
+		// var skala_kolorow="\r\n\t<g id='skala_kolorow' >"
+		 
+		 
+		 skala_kolorow+="\r\n\t\t <rect x='0' y='0' rx='1%' ry='1%' width='"+(parametr_szerokosci*10*1.01)+"' height='"+rozmiar_czcionki*7+"' style='fill:"+parametry.kolory.tlo_mapy+";stroke:"+parametry.kolory.obrys_menu+";stroke-width:0.1%' />"
+	     skala_kolorow+="\r\n\t\t <text text-anchor='middle' x='"+(parametr_szerokosci*10*1.01)/2+"' y='"+(ky+rozmiar_czcionki*parametry.skala_legend*1.2)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki*parametry.skala_legend+"px; fill: "+parametry.kolory.czcionka_menu+";' >Typy widmowe</text>" //
+
+             ky+=rozmiar_czcionki*2.2*parametry.skala_legend
+	   for(i=koloryHR.length-1;i>=1;i--)
+	    {
+		 
+		 kx+=((i==koloryHR.length-1)?parametr_szerokosci/2:parametr_szerokosci)
+	     skala_kolorow+="\r\n\t\t <text text-anchor='start' x='"+kx+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.czcionka_menu+";' >"+koloryHR[i]+"</text>" //
+		 skala_kolorow+="\r\n\t\t <text text-anchor='start' x='"+kx+"' y='"+(ky+rozmiar_czcionki*2.1)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki*0.8+"px; fill: "+parametry.kolory.czcionka_menu+";'transform='rotate(30 "+kx+" "+(ky+rozmiar_czcionki*3)+")' >"+kolory.temperatura[koloryHR[i]]+"K</text>" //&deg;C
+
+         for(j=0;j<(i==0?5:10);j++)
+		  {
+		   HR=i*10-j;
+			R=Math.floor(kolory.R.a*Math.tanh((HR+kolory.R.b)*kolory.R.c)+kolory.R.d).toString(16);
+			G=Math.floor(kolory.G.a*pow(HR,4)+kolory.G.b*pow(HR,3)+kolory.G.c*pow(HR,2)+kolory.G.d*HR+kolory.G.e).toString(16);
+			B=Math.floor(kolory.B.a*Math.tanh((HR+kolory.B.b)*kolory.B.c)+kolory.B.d)
+			
+			B=(B<0?0:B).toString(16);
+			B=(B.length<2?("0"+B):B)
+		///B czarne gwiazdy przez B
+	   
+		// if(i==0)
+		//	B="00"//console.log(R+"|"+G+"|"+B)
+			
+			kol_hr="#"+R+""+G+""+B;
+		   //"+rozmiar_czcionki*1.6+"
+		    skala_kolorow+="\r\n\t\t <rect x='"+(kx+parametr_szerokosci/10*j)*0.99+"' y='"+(ky+rozmiar_czcionki*0.2)+"' width='"+parametr_szerokosci/10*1.01+"' height='"+rozmiar_czcionki*1.1+"' style='fill:"+kol_hr+";stroke:none;stroke-width:0' />"
+
+		   
+		  }
+		}
+		skala_kolorow+="\r\n\t</g>"
+		//console.log(skala_kolorow)
+	   
+//skala magnitudo
+    	    var skala_jasnosci="\r\n\t<g id='skala_jasnosci' transform=' translate(150 150)'>"
+//			    	    var skala_jasnosci="\r\n\t<g id='skala_jasnosci'>"
+
+			 kx=0.0
+			 
+		     ky=0.0
+			skala_jasnosci+="\r\n\t\t <rect x='0' y='0' rx='1%' ry='1%' width='"+(parametr_szerokosci*10*1.01)+"' height='"+rozmiar_czcionki*7+"' style='fill:"+parametry.kolory.tlo_mapy+";stroke:"+parametry.kolory.obrys_menu+";stroke-width:0.1%' />"
+	        skala_jasnosci+="\r\n\t\t <text text-anchor='middle' x='"+(parametr_szerokosci*10*1.01)/2+"' y='"+(ky+rozmiar_czcionki*parametry.skala_legend*1.2)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki*parametry.skala_legend+"px; fill: "+parametry.kolory.czcionka_menu+";' >Wielkości gwiazdowe</text>" //
+			ky+=rozmiar_czcionki*parametry.skala_legend*2.5
+			skala_jasnosc_glow="\r\n\t<g id='menu_gwiazdy_cien' transform=' translate("+((parametr_szerokosci*10*1.01)-8*parametr_szerokosci)/2+" 0)'  filter='url(#dropGlow)'>";//g
+
+//to poto aby na skali nie obcinalo brzegow 
+						   skala_jasnosc_glow+="\r\n\t\t<circle cx='0' cy='0' r='1' fill='"+parametry.kolory.tlo_mapy+"'  />" //czy na pewno #ffffff
+
+			skala_jasnosc_gwiazdy="\r\n\t<g id='menu_gwiazdy' transform=' translate("+((parametr_szerokosci*10*1.01)-8*parametr_szerokosci)/2+" 0)'>"//g
+              for(m=-1;m<7;m++)
+			  {
+			  kx+=((m==-1)?parametr_szerokosci/2:parametr_szerokosci)
+			  skala_jasnosci+="\r\n\t\t <text text-anchor='start' x='"+(kx+((parametr_szerokosci*10*1.01)-8*parametr_szerokosci)/2)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.czcionka_menu+";' >"+m+"<tspan dy ='-"+(rozmiar_czcionki/2)+"'>m</tspan></text>" //
+			  
+			   //tbl[i][2] --> ??
+			    offset =1.2
+     		  rozmiar=pow((par.mag.value*1+offset-m)/(par.mag.value*1+offset),1.2)
+			   rozm_y=rozmiar*parametry.rozmiar_gwiazd*xres/(180+2*45);
+			   skala_jasnosc_glow+="\r\n\t\t<circle cx='"+(kx+rozmiar_czcionki/2)+"' cy='"+(ky+rozmiar_czcionki)+"' r='"+(rozm_y/2)*parametry.rozmiar_glow_gwiazd+"' fill='#ffffff'  />" //czy na pewno #ffffff
+		       skala_jasnosc_gwiazdy+="\r\n\t\t<circle cx='"+(kx+rozmiar_czcionki/2)+"' cy='"+(ky+rozmiar_czcionki)+"' r='"+(rozm_y/2)*parametry.rozmiar_gwiazd+"' fill='#ffffff'  />"
+			  
+			  }
+			  
+			  skala_jasnosc_glow+="\r\n\t</g>"// /g
+			  skala_jasnosc_gwiazdy+="\r\n\t</g>"// /g
+			  skala_jasnosci+=skala_jasnosc_glow
+			  skala_jasnosci+=skala_jasnosc_gwiazdy
+	        skala_jasnosci+="\r\n\t</g>"
+			
+	 //  console.log(skala_jasnosci)
+	   
+	      
+	   //tytuł
+	   rozmiar_czcionki_T=parametry.rozmiar_czcionki_tytul*xres/(180+2*45)
+	    tytul="\r\n\t<g id='tytul' >" //transform=' translate(100 150)' filter='url(#dropGlow)'
+		tytul+="\r\n\t\t <text text-anchor='middle' x='50%' y='25%'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_T+"px; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' filter='url(#dropGlowT)'>Dotknij nieba!</text>" //
+	    //    tytul+="\r\n\t\t <text text-anchor='middle' x='50%' y='"+(20+rozmiar_czcionki_T/par.resolution.value*100*1.2)+"%'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_T+"px; fill: "+parametry.kolory.nazwy_gwiazdozbiorow_fill+";' filter='url(#dropGlow)'>Mapa Niebia</text>" //
+			
+	        tytul+="\r\n\t\t <text text-anchor='middle' x='50%' y='25%'   style='font-family: Calabri; opacity: 0.97; font-size: "+rozmiar_czcionki_T+"px; fill: "+parametry.kolory.czcionka_menu+";' >Dotknij nieba!</text>" //
+	     //   tytul+="\r\n\t\t <text text-anchor='middle' x='50%' y='"+(20+rozmiar_czcionki_T/par.resolution.value*100*1.2)+"%'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_T+"px; fill: "+parametry.kolory.czcionka_menu+";' >Mapa Niebia</text>" //
+         tytul+="\r\n\t</g >"
+	   
+	  // console.log(tytul)
+	   
 	  
+	   //mglawice lrgenda
+	   
+			 kx=parametr_szerokosci*6*1.01*0.25
+		     ky=0.0
+			 rozmiar_czcionki_M=parametry.rozmiar_czcionki_mglawic*xres/(180+2*45)
+			 	   var mglawice_legenda="\r\n\t<g id='skala_jasnosci' transform=' translate(100 "+(par.resolution.value-150-((rozmiar_czcionki*3)+(rozmiar_czcionki_M*1.2*10))*skala_legend)+") scale("+skala_legend+")'>" // - wysokosc a nie 700
+			 	  // var mglawice_legenda="\r\n\t<g id='skala_jasnosci' transform=' scale("+skala_legend+")'>" // - wysokosc a nie 700
+
+			mglawice_legenda+="\r\n\t\t <rect x='0' y='0' rx='1%' ry='1%' width='"+(parametr_szerokosci*6*1.01)+"' height='"+((rozmiar_czcionki*3)+(rozmiar_czcionki_M*1.2*5))+"' style='fill:"+parametry.kolory.tlo_mapy+";stroke:"+parametry.kolory.obrys_menu+";stroke-width:0.1%' />"
+	        mglawice_legenda+="\r\n\t\t <text text-anchor='middle' x='"+(parametr_szerokosci*6*1.01)/2+"' y='"+(ky+rozmiar_czcionki)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.czcionka_menu+";' >Obiekty mgławicowe</text>" //
+			ky+=rozmiar_czcionki*2
+			rozmiar_m=parametry.rozmiar_mglawic*xres/(180+2*45)*1.5 // powiekszone rozmiary mgławic
+			
+	   // "Galaktyka"://elipsa
+				mglawice_legenda+="\r\n\t\t<ellipse cx='"+kx+"' cy='"+(ky-rozmiar_czcionki_M*0.3)+"' rx='"+(rozmiar_m*1.5)+"' ry='"+(rozmiar_m*0.9)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"'  />"     		
+				mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >galaktyka</text>" //
+			//	 "Gromada kulista":  //koło pełne
+		         ky+=rozmiar_czcionki_M*1.2
+					mglawice_legenda+="\r\n\t\t<circle cx='"+(kx)+"' cy='"+(ky-rozmiar_czcionki_M*0.3)+"' r='"+rozmiar_m+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none'/>"     		
+					mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >gromada kulista</text>" //
+	//	"Gromada otwarta":  //koło puste
+	ky+=rozmiar_czcionki_M*1.2
+		 	mglawice_legenda+="\r\n\t\t<circle cx='"+(kx)+"' cy='"+(ky-rozmiar_czcionki_M*0.3)+"' r='"+rozmiar_m+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"'/>"     		
+                    mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >gromada otwarta</text>" //
+		//	"Mgławica planetarna":  // koło grube
+			ky+=rozmiar_czcionki_M*1.2
+		 mglawice_legenda+="\r\n\t\t<circle cx='"+(kx)+"' cy='"+(ky-rozmiar_czcionki_M*0.3)+"' r='"+(rozmiar_m)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii*3+"' stroke='"+parametry.kolory.mglawice+"'/>"     		
+					mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >mgławica planetarna</text>" //
+				//	 "Mgławica emisyjna": //kwadrat
+		ky+=rozmiar_czcionki_M*1.2
+		    mglawice_legenda+="\r\n\t\t<rect x='"+((kx)-rozmiar_m)+"' y='"+((ky-rozmiar_czcionki_M*0.4)-rozmiar_m/2)+"' width='"+(rozmiar_m*2)+"' height='"+(rozmiar_m*2)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"' />"     		
+					mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >mgławica emisyjna</text>" //
+			//	"Mgławica refleksyjna": // trójkat
+				ky+=rozmiar_czcionki_M*1.2
+		  mglawice_legenda+="\r\n\t\t<rect x='"+((kx)-rozmiar_m)+"' y='"+((ky-rozmiar_czcionki_M*0.4)-rozmiar_m/2)+"' width='"+(rozmiar_m*2)+"' height='"+(rozmiar_m*2)+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none' />"     		
+				mglawice_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+rozmiar_m*5)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >mgławica refleksyjna</text>" //
+				
+	   mglawice_legenda+="\r\n\t</g>"
+	   //console.log(mglawice_legenda)
+	   //--
+	   
+	   //linie legenda
+	   /*
+	   ekliptyka
+	   równik
+	   południki
+	   rónoleżniki
+	   granice gwiazdozbiorów
+	   linie gwiazdozbiorów
+	    */
+		
+		
+		dlugosc_linii=(parametr_szerokosci*6*1.01)/5//20%szerokosci
+		kx0=(parametr_szerokosci*6*1.01)/5
+		ky=0.0 															//(par.resolution.value-150-((rozmiar_czcionki*3)+(rozmiar_czcionki_M*1.2*10))*skala_legend)+") scale("+skala_legend+")'>" // - wysokosc a nie 700
+	   var linie_legenda="\r\n\t<g id='legenda_linie' transform=' translate("+(xres-(parametr_szerokosci*6*1.01)*skala_legend-100)+" "+(par.resolution.value-150-((rozmiar_czcionki*3)+(rozmiar_czcionki_M*1.2*10))*skala_legend)+") scale("+skala_legend+")'>" // - wysokosc a nie 700
+	  // 	   var linie_legenda="\r\n\t<g id='legenda_linie' transform=' scale("+skala_legend+")'>" // - wysokosc a nie 700
+
+	       linie_legenda+="\r\n\t\t <rect x='0' y='0' rx='1%' ry='1%' width='"+(parametr_szerokosci*6*1.01)+"' height='"+((rozmiar_czcionki*3)+(rozmiar_czcionki_M*1.2*5))+"' style='fill:"+parametry.kolory.tlo_mapy+";stroke:"+parametry.kolory.obrys_menu+";stroke-width:0.1%' />"
+	        linie_legenda+="\r\n\t\t <text text-anchor='middle' x='"+(parametr_szerokosci*6*1.01)/2+"' y='"+(ky+rozmiar_czcionki)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.czcionka_menu+";' >Oznaczenia linii</text>" //
+			ky+=rozmiar_czcionki*2
+		
+							
+
+				linie_legenda+="\r\n\t\t<line x1="+kx0+" y1="+(ky-rozmiar_czcionki_M/2)+" x2="+(kx0+dlugosc_linii)+" y2="+(ky-rozmiar_czcionki_M/2)+"  stroke-width='"+parametry.rysunki_grubosc+"' stroke='"+parametry.kolory.rysunki+"' />"//
+				linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >rysunki gwiazdozbiorów</text>" //
+				ky+=rozmiar_czcionki_M*1.2
+				
+				linie_legenda+="\r\n\t\t<path d='M"+kx0+","+(ky-rozmiar_czcionki_M/2)+" Q"+(kx0+dlugosc_linii/2)+","+(ky)+" "+(kx0+dlugosc_linii)+","+(ky-rozmiar_czcionki_M/2)+"'   fill='none' stroke-dasharray='20 20' stroke='"+parametry.kolory.granice+"' stroke-width='"+parametry.grubosc_granice+"' ></path>"
+				linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >granice gwiazdozbiorów</text>" //
+				ky+=rozmiar_czcionki_M*1.2
+						// wsad+="\r\n\t\t<circle cx="+(transform(0,90).x*1)+" cy="+(transform(0,90).y*1)+" r="+(transform(0,90).x*1-transform(0,0).x*1)+" fill='none' stroke='"+parametry.kolory.rownik+"' stroke-width='1.5' />"
+	            
+				linie_legenda+="\r\n\t\t<path d='M"+kx0+","+(ky-rozmiar_czcionki_M/2)+" Q"+(kx0+dlugosc_linii/2)+","+(ky)+" "+(kx0+dlugosc_linii)+","+(ky-rozmiar_czcionki_M/2)+"'   fill='none' stroke='"+parametry.kolory.rownik+"' stroke-width='"+parametry.grubosc_granice+"' ></path>"
+				linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >równik niebieski</text>" //
+				ky+=rozmiar_czcionki_M*1.2
+				
+				grubosc=parametry.poludniki.grubosc
+				kolor=parametry.kolory.rownolezniki
+				linie_legenda+="\r\n\t\t<path d='M"+kx0+","+(ky-rozmiar_czcionki_M/2)+" Q"+(kx0+dlugosc_linii/2)+","+(ky)+" "+(kx0+dlugosc_linii)+","+(ky-rozmiar_czcionki_M/2)+"'   fill='none' stroke='"+kolor+"' stroke-width='"+grubosc+"' ></path>"
+				linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >równoleżniki</text>" //
+				ky+=rozmiar_czcionki_M*1.2
+				
+				linie_legenda+="\r\n\t\t<line x1="+kx0+" y1="+(ky-rozmiar_czcionki_M)+" x2="+(kx0+dlugosc_linii)+" y2="+(ky)+" fill='none'  stroke-width='"+parametry.poludniki.grubosc+"' stroke='"+parametry.kolory.poludniki+"' />"
+				linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >południki</text>" //
+				ky+=rozmiar_czcionki_M*1.2
+				//ekliptyka_do_legendy
+				
+				rozmiar_ekl=parametry.ekliptyka.tiki.miesiac*xres/(180+2*45)
+				rozmiar_czcionki_ekl=parametry.ekliptyka.rozmiar_czcionki*xres/(180+2*45)
+				//prostopadłe
+				
+				//linie_legenda+=
+				              for(z=0;z<6;z++)
+							    linie_legenda+="\r\n\t\t<line x1="+(kx0+dlugosc_linii/6*z)+" y1="+ky+" x2="+(kx0+dlugosc_linii/6*z)+" y2="+(ky-rozmiar_czcionki_M)+" fill-opacity='0.5' stroke-width='"+parametry.ekliptyka.tiki.grubosc_jeden+"' stroke='"+parametry.kolory.ekliptyka_tiki+"'/>"
+ //napisy na kropkach
+ //kropki
+			 linie_legenda+="\r\n\t\t<circle cx='"+(kx0+dlugosc_linii)+"' cy='"+(ky-rozmiar_czcionki_M/2)+"' r='"+rozmiar_ekl+"' fill-opacity='0.7' fill='"+parametry.kolory.ekliptyka_tiki+"' />"
+			 //krzywa
+					 linie_legenda+="<line x1='"+kx0+"' y1='"+(ky-rozmiar_czcionki_M/2)+"' x2='"+(kx0+dlugosc_linii)+"' y2='"+(ky-rozmiar_czcionki_M/2)+"' fill='none' stroke='"+parametry.kolory.ekliptyka_linia+"' stroke-width='"+parametry.ekliptyka.tiki.grubosc_linii+"' fill-opacity='0.2' />"
+
+ctx.font=""+rozmiar_czcionki_ekl+"px Calabri";
+			 lineHeight=ctx.measureText('M').width*0.8;
+
+//dominant-baseline='central'
+			 linie_legenda+="\r\n\t\t <text text-anchor='middle'   x='"+(kx0+dlugosc_linii)+"' y='"+(ky-rozmiar_czcionki_M/2+lineHeight/2)+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_ekl+"px;'  >IV</text>"
+
+				        /* linie_legenda+="\r\n\t\t<g id='ekliptyka_do_legendy' transform=' translate(-6000 -6000)'>"
+						 linie_legenda+=ekliptyka_do_legendy_wsad
+						 linie_legenda+="<path d='"+ekliptyka_do_legendy+"' fill='none' stroke='"+parametry.kolory.ekliptyka_linia+"' stroke-width='"+parametry.ekliptyka.tiki.grubosc_linii+"' fill-opacity='0.2' />"
+						 linie_legenda+="\r\n\t\t</g>"*/
+				         linie_legenda+="\r\n\t\t <text text-anchor='start' x='"+(kx+dlugosc_linii*1.05)+"' y='"+ky+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki_M+"px; fill: "+parametry.kolory.czcionka_menu+";' >ekliptyka</text>" //
+
+
+		   linie_legenda+="\r\n\t</g>"
+
+			//console.log(linie_legenda)
+	   
 	  
+	   
+	   
 	    //nazwy jasnych gwiazd
 		 ///nazwyg
 wsad+="\r\n\t<g id='nazwy_gwiazd'>"
@@ -1149,7 +1678,8 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 		                 przesunieciera=1/60+4/60/pow((90-nazwyg[i][1]*1),2.5)
 						 
 						 offset =1.2
-     		  rozmiar=pow((par.mag.value*1+offset-tbl[i][2]),1.3)//*(180+2*45)/xres*sins(90-nazwyg[i][1]*1)/60
+						 
+     		  rozmiar=pow((par.mag.value*1+offset-tbl[i][2])/(par.mag.value*1+offset),1.2)*parametry.rozmiar_gwiazd*xres/(180+2*45);//*(180+2*45)/xres*sins(90-nazwyg[i][1]*1)/60
 
 		       //var mx=transform(nazwyg[i][0]*1-przesunieciera-(nazwyg[i][2]*1)/60,nazwyg[i][1]*1+przesuniecieda).x
 			   //var my=transform(nazwyg[i][0]*1-przesunieciera-(nazwyg[i][2]*1)/60,nazwyg[i][1]*1+przesuniecieda).y
@@ -1159,8 +1689,8 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
 			   
-			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
-			    var rozmiar_czcionki=xres* 1.5/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   //var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
+			    var rozmiar_czcionki=parametry.rozmiar_czcionki_jasnych*xres/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
 			   var mxp=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).x-(rozmiar)*coss(kat) //+rozmiar_czcionki+2
 			   var myp=transform(nazwyg[i][0]*1,nazwyg[i][1]*1).y+(rozmiar)*sins(kat)
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI  //to jest kat pod jakim nalezy obrucic prsta aby byla prostopadla do radialnej w biegnowym
@@ -1169,55 +1699,91 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 
 		  }
 	  wsad+="\r\n\t</g>"
-	  
+	  //mglawice
 	  wsad+="\r\n\t<g id='mglawice'>"
 	  
 	    for(i=0;i<mglawice.lista.length;i++)
-		  if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic&&mglawice.lista[i][1]>parametry.deklinacja_min)
+		  if(mglawice.lista[i][1]>parametry.deklinacja_min)
 	       {
 		     
-			 rozmiar_m=4;// px
+			 rozmiar_m=parametry.rozmiar_mglawic*xres/(180+2*45)//4;// px
 		   
 		    var mx=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).x
 			   var my=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).y
 			   var kat=Math.atan2(yres/2-my,mx-xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
+		
+			   var rozmiar_czcionki=parametry.rozmiar_czcionki_mglawic*xres/(180+2*45)//xres* (52-48)/(180+2*45)
+			 //   var rozmiar_czcionki=xres* 1.5/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
+			   poprawkaRA=0
+			   poprawkaDA=0
+			 	   if(mglawice.lista[i].length>5)
+				   {
+			         poprawkaRA=mglawice.lista[i][5]
+					 poprawkaDA=mglawice.lista[i][6]
+					// console.log(poprawkaRA+" ><><  "+poprawkaDA)
+				  }
+				
+			   var mxp=transform(mglawice.lista[i][0]*1+poprawkaRA,mglawice.lista[i][1]*1+poprawkaDA).x-(rozmiar_m+3)*coss(kat) //+rozmiar_czcionki+2
+			   var myp=transform(mglawice.lista[i][0]*1+poprawkaRA,mglawice.lista[i][1]*1+poprawkaDA).y+(rozmiar_m+3)*sins(kat)
 			   
-			   var rozmiar_czcionki=8//xres* (52-48)/(180+2*45)
-			    var rozmiar_czcionki=xres* 1.5/(180+2*45)  //rozmiar czcionki w stopniach skalowalny
-			   var mxp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).x-(rozmiar_m+2)*coss(kat) //+rozmiar_czcionki+2
-			   var myp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).y+(rozmiar_m+2)*sins(kat)
 			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI
 			   
           switch(mglawice.typy[mglawice.lista[i][4]]){
 		  case "Galaktyka"://elipsa
-		   wsad+="\r\n\t\t<ellipse cx='"+mx+"' cy='"+my+"' rx='"+(rozmiar_m*1.1)+"' ry='"+(rozmiar_m*0.7)+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mxp+","+myp+")' />"     		
-
+		   {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.galaktyka){
+		       var mxp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).x-(rozmiar_m*1.5)*coss(kat)
+			   var myp=transform(mglawice.lista[i][0]*1,mglawice.lista[i][1]*1).y+(rozmiar_m*0.9)*sins(kat)
+			   var kont=Math.atan2(xres/2-mxp,myp-yres/2)*180/Math.PI
+				wsad+="\r\n\t\t<ellipse cx='"+mx+"' cy='"+my+"' rx='"+(rozmiar_m*1.5)+"' ry='"+(rozmiar_m*0.9)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mx+","+my+")' />"     		
+				wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+				}
+           }
 		  break;
 		  case "Gromada kulista":  //koło pełne
-		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none'/>"     		
-
+		  {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.kulista){
+					wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none'/>"     		
+					wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+					}
+           }
 		  break;
 		  case "Gromada otwarta":  //koło puste
-		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"'/>"     		
-
+		  {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.otwarta){
+					wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"'/>"     		
+                    wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+					}
+			}
 		  break;
 		  case "Mgławica emisyjna": //kwadrat
-		  		  		    wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m)+"' height='"+(rozmiar_m)+"' fill='none' stroke-width='0.5' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mxp+","+myp+")' />"     		
-
+		     {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.emisyjna){
+		  		  	wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m*2)+"' height='"+(rozmiar_m*2)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii+"' stroke='"+parametry.kolory.mglawice+"' transform='rotate("+kont+" "+mx+","+my+")' />"     		
+					wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+					}
+				}
 		  break;
 		  case "Mgławica planetarna":  // koło grube
-		  		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+(rozmiar_m)+"' fill='none' stroke-width='2' stroke='"+parametry.kolory.mglawice+"'/>"     		
-
+		  {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.planetarna){
+		  		    wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+(rozmiar_m)+"' fill='none' stroke-width='"+parametry.mglawice_grubosc_linii*3+"' stroke='"+parametry.kolory.mglawice+"'/>"     		
+					wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+					}
+				}
 		  break;
 		  case "Mgławica refleksyjna": // trójkat
-		  		  		  		    wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m)+"' height='"+(rozmiar_m)+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none' transform='rotate("+kont+" "+mxp+","+myp+")'/>"     		
-
+		  {
+		   if(mglawice.lista[i][2]<parametry.jasnosc_graniczna_mglawic.refleksyjna){
+				wsad+="\r\n\t\t<rect x='"+(mx-rozmiar_m/2)+"' y='"+(my-rozmiar_m/2)+"' width='"+(rozmiar_m*2)+"' height='"+(rozmiar_m*2)+"' fill='"+parametry.kolory.mglawice+"' stroke-width='0' stroke='none' transform='rotate("+kont+" "+mx+","+my+")'/>"     		
+				wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
+				}
+           }  
 		  break;
 		  }
 		   
  	  //wsad+="\r\n\t\t<circle cx='"+mx+"' cy='"+my+"' r='"+rozmiar_m+"' fill='none' stroke-width='1' stroke='"+parametry.kolory.mglawice+"'/>"     		
-        wsad+="\r\n\t\t <text text-anchor='start' x='"+mxp+"' y='"+myp+"'   style='font-family: Calabri; font-size: "+rozmiar_czcionki+"px; fill: "+parametry.kolory.nazwy_mglawic+";' transform='rotate("+kont+" "+mxp+","+myp+")'>"+mglawice.lista[i][3]+"</text>" //
 
 		   }
 	  wsad+="\r\n\t</g>"
@@ -1244,27 +1810,27 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 		
 	    for(A=0;A<=360;A++){
 		
-		 h=-2 //glebokosc ze wzgledu na refrakcje
+		 h=parametry.horyzont.gorny_brzeg //glebokosc ze wzgledu na refrakcje
 	    var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
 	     x1=transform(HA_h,del_h*180/Math.PI).x
 	     y1=transform(HA_h,del_h*180/Math.PI).y
-		 h=-3
+		 h=parametry.horyzont.tiki.jednosc
 		 if(A%10==0)
-		  h=-4
+		  h=parametry.horyzont.tiki.dziesiec
 		 
 		 if(A%30==0)
-		  h=-5
+		  h=parametry.horyzont.tiki.trzydziesci
 		 
 		 if(A%90==0)
-		  h=-6
+		  h=parametry.horyzont.tiki.dziewiedziesat
 		 
 		var HA_h=Math.atan2(sins(A),(coss(A)*sins(par.szer.value*1)+Math.tan(h*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
 		var del_h=Math.asin(sins(par.szer.value*1)*sins(h)-coss(par.szer.value*1)*coss(h)*coss(A))
 	     x2=transform(HA_h,del_h*180/Math.PI).x
 	     y2=transform(HA_h,del_h*180/Math.PI).y
 		// console.log(del_h+" "+HA_h+" ")
-		wsad2+="\r\n\t\t <line x1="+x1+" y1="+y1+" x2="+x2+" y2="+y2+"  stroke-width='1' stroke='"+parametry.kolory.tiki_horyzontu+"' />"
+		wsad2+="\r\n\t\t <line x1="+x1+" y1="+y1+" x2="+x2+" y2="+y2+"  stroke-width='"+parametry.horyzont.grubosc_tkow+"' stroke='"+parametry.kolory.tiki_horyzontu+"' stroke-linecap='round' />"
 		if(A%90==0)
 		 {
 		  kierunki={0:"S",90:"E",180:"N",270:"W",360:"S"}
@@ -1276,10 +1842,24 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 		  
 		  	   var kat=Math.atan2(kanwa.yres/2-y2,x2-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
-			     mxp=((parametry.rozmiar_czcionki_kierunki*13/20)/2)*coss(kat)
-		         myp=-((parametry.rozmiar_czcionki_kierunki*13/20)/2)*sins(kat)
+			   rozmiar_czcionki_K=parametry.rozmiar_czcionki_kierunki*xres/(180+2*45)
 			   
-		  wsad2+="\r\n\t\t <text text-anchor='middle' x='"+x2+"' y='"+y2+"'   transform='translate(0 "+((parametry.rozmiar_czcionki_kierunki*13/20)/2)+") translate("+mxp+" "+myp+")' style='font-family: Calabri; font-size: "+parametry.rozmiar_czcionki_kierunki+"px; fill: "+parametry.kolory.czcionak_kierunku+";' >"+kierunki[A]+"</text>" //
+			 ctx.font=""+rozmiar_czcionki_K+"px Calabri";
+			 lineHeight=ctx.measureText('M').width*0.8;
+			   
+			   
+			   mxp=(rozmiar_czcionki_K/3)*coss(kat)
+		       myp=-(rozmiar_czcionki_K/3)*sins(kat)
+			   
+			   var kata=Math.atan2(kanwa.yres/2-myp,mxp-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kata=(kat<0)?360+kat:kat
+			   
+			   	    mxpa=(lineHeight)*coss(kata)
+		        mypa=-(lineHeight)*sins(kata)
+			   		//	rozmiar_czcionki_K=parametry.rozmiar_czcionki_kierunki*xres/(180+2*45)
+
+			  // dominant-baseline='central' translate("+mxp+" "+myp+") 
+		  wsad2+="\r\n\t\t <text text-anchor='middle'   x='"+x2+"' y='"+y2+"'   transform='translate("+mxpa+" "+mypa+")' style='font-family: Calabri; font-size: "+rozmiar_czcionki_K+"px; fill: "+parametry.kolory.czcionak_kierunku+";' >"+kierunki[A]+"</text>" //
          }
 		 else
 		 {
@@ -1293,23 +1873,100 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 			
 			  var kat=Math.atan2(kanwa.yres/2-y2,x2-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
-			     mxp=((parametry.rozmiar_czcionki_kierunki*13/20)/2+2)*coss(kat)
-		         myp=-((parametry.rozmiar_czcionki_kierunki*13/20)/2+2)*sins(kat)
+			   
+			   rozmiar_czcionki_A=parametry.rozmiar_czcionki_azymut*xres/(180+2*45) 
+			   
+			   ctx.font=""+rozmiar_czcionki_A+"px Calabri";
+			   lineHeight=ctx.measureText('M').width*0.8;
+			   
+			   mxp=((rozmiar_czcionki_A)/2)*coss(kat)
+		         myp=-((rozmiar_czcionki_A)/2)*sins(kat)
+			   
+			      var kata=Math.atan2(kanwa.yres/2-myp,mxp-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kata=(kat<0)?360+kat:kat
+			   
+			   	    mxpa=(lineHeight)*coss(kata)
+		        mypa=-(lineHeight)*sins(kata)
+			//tu muszom być dwa translaty ten co był wcześniej i nowy zamiast dominant baseline
 			
-		    wsad2+="\r\n\t\t <text text-anchor='middle' x='"+x2+"' y='"+y2+"' transform='translate(0 "+((parametry.rozmiar_czcionki_azymut*13/20)/2)+") translate("+mxp+" "+myp+")'  style='font-family: Calabri; font-size: "+parametry.rozmiar_czcionki_azymut+"px; fill: "+parametry.kolory.czcionak_azymut+";' >"+A+"</text>" //
+		//	dominant-baseline='central' translate("+mxp+" "+myp+")
+		    wsad2+="\r\n\t\t <text text-anchor='middle'   x='"+x2+"' y='"+y2+"' transform='translate("+mxpa+" "+mypa+")'  style='font-family: Calabri; font-size: "+rozmiar_czcionki_A+"px; fill: "+parametry.kolory.czcionak_azymut+";' >"+A+"</text>" //
 
 		   }
 		 }
 		 
 		}
-	   
-	   
-	   
-	   
-	   
-
-	   wsad2+="\r\n\t</g>"
+	    wsad2+="\r\n\t</g>"
 	  //---skala horyzontu
+	  
+	  
+	  
+	    wsad_siatka_hor="\r\n\t<g id='siatka_horyzontalna'>"
+		//południk:
+		 azymut=0; //jesli tak zadziala to git jesli nie to na dwa kawałki dla A=0 i A=180 i od -h do 90 podobnie z pierwszym wertykałem
+		 wertykaly=new Array(0,90,180,270)
+		 almukantaraty=new Array(30,60)
+		 inkrement_siatki_hor=0.1;
+		 
+		 //wertykaly=new Array(0,10,20,30,40,90,100,110,130,150,170,180,190,200,220,250,270)
+		 //almukantaraty=new Array(30,60)
+		 
+		 
+		 for(wer=0;wer<wertykaly.length;wer++) 
+		 {
+		        azymut=wertykaly[wer]
+				wys=parametry.horyzont.gorny_brzeg
+				
+		    	var HA_h=Math.atan2(sins(azymut),(coss(azymut)*sins(par.szer.value*1)+Math.tan(wys*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+				var del_h=Math.asin(sins(par.szer.value*1)*sins(wys)-coss(par.szer.value*1)*coss(wys)*coss(azymut))		 
+ 
+               linia="M"+transform(HA_h,del_h*180/Math.PI).x+","+transform(HA_h,del_h*180/Math.PI).y+" S"
+			   
+				for(wys=parametry.horyzont.gorny_brzeg;wys<90;wys+=inkrement_siatki_hor)
+				{
+				    
+					var HA_h=Math.atan2(sins(azymut),(coss(azymut)*sins(par.szer.value*1)+Math.tan(wys*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+					var del_h=Math.asin(sins(par.szer.value*1)*sins(wys)-coss(par.szer.value*1)*coss(wys)*coss(azymut))
+					x2=transform(HA_h,del_h*180/Math.PI).x
+					y2=transform(HA_h,del_h*180/Math.PI).y
+					linia+=x2+","+y2+" "
+				}
+				
+				
+				
+		  wsad_siatka_hor+="\r\n\t\t<path d='"+linia+"'   fill='none' stroke='"+parametry.kolory.siatka_hor+"' stroke-width='"+parametry.horyzont.grubosc_tkow+"' />"
+		}
+		
+	
+		 for(almu=0;almu<almukantaraty.length;almu++) 
+		 {
+		   azymut=0
+		   wys=almukantaraty[almu];
+		   var HA_h=Math.atan2(sins(azymut),(coss(azymut)*sins(par.szer.value*1)+Math.tan(wys*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+				var del_h=Math.asin(sins(par.szer.value*1)*sins(wys)-coss(par.szer.value*1)*coss(wys)*coss(azymut))		 
+ 
+               linia="M"+transform(HA_h,del_h*180/Math.PI).x+","+transform(HA_h,del_h*180/Math.PI).y+" S"
+			   
+		   for(azymut=0;azymut<360;azymut+=inkrement_siatki_hor)
+		   {
+		            var HA_h=Math.atan2(sins(azymut),(coss(azymut)*sins(par.szer.value*1)+Math.tan(wys*Math.PI/180)*coss(par.szer.value*1)))*12/Math.PI+18;
+					var del_h=Math.asin(sins(par.szer.value*1)*sins(wys)-coss(par.szer.value*1)*coss(wys)*coss(azymut))
+					x2=transform(HA_h,del_h*180/Math.PI).x
+					y2=transform(HA_h,del_h*180/Math.PI).y
+					linia+=x2+","+y2+" "
+		   }
+		   
+		   wsad_siatka_hor+="\r\n\t\t<path d='"+linia+" Z'   fill='none' stroke='"+parametry.kolory.siatka_hor+"' stroke-width='"+parametry.horyzont.grubosc_tkow+"' />"
+
+		 }
+		
+		 wsad_siatka_hor+="\r\n\t</g>"
+	  //siatka horyzontalna -- pierwszy wertykał i południk ewentualnie ze dwie wysokości
+	  console.log(wsad_siatka_hor)
+	  wsad2+=wsad_siatka_hor
+	  
+	  
+	  //
 	  
 	  
 	  //tło skali godzinnej
@@ -1321,13 +1978,53 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 	  	wsad2+="\r\n\t<g id='skala godzinna'>"
 		 for(RA=0;RA<24*60;RA+=1)
 		 {
-		 tik=3;
+		 tik=parametry.zegar.tiki.dlugosc.jeden;
+		 grubosc=parametry.zegar.tiki.grubosc.jeden;
 		 if(RA%10==0)
-		 tik=6;
+		 {
+		 tik=parametry.zegar.tiki.dlugosc.dziesiec;
+		 grubosc=parametry.zegar.tiki.grubosc.dziesiec;
+		 
+		 /*
+		 // podpisy minutowe
+		 if(RA%60!=0)
+		 {
+		  rozmiar_czcionki_G=parametry.rozmiar_czcionki_minut*parametry.rozmiar_czcionki_godzinnej*xres/(180+2*45)
+		  mxp=(rozmiar_czcionki_G/2)*coss(kat)
+		  myp=-(rozmiar_czcionki_G)/2*sins(kat)
+		  
+		  ctx.font=""+rozmiar_czcionki_G+"px Calabri";
+			   lineHeight=ctx.measureText('M').width*0.8*0.5;
+			   
+			      var kata=Math.atan2(kanwa.yres/2-myp,mxp-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kata=(kat<0)?360+kat:kat
+			   
+			   	    mxpa=(lineHeight)*coss(kata)
+		        mypa=-(lineHeight)*sins(kata)
+		  
+		  
+		  //dominant-baseline='central' 
+		  wsad2+="\r\n\t\t <text text-anchor='middle'  x='"+mx+"' y='"+my+"' transform='translate("+mxpa+" "+(mypa+lineHeight/2)+")'  style='font-family: Calabri; font-size: "+rozmiar_czcionki_G+"px; fill: #ffffff;' >"+Math.floor((((24-((RA/60-6<=0)?RA/60+18:RA/60-6))%1)*61))+"</text>" //
+		
+		 
+		 
+		 
+		 }
+		 //podpisy minutowe
+		 */
+		 
+		 
+		 }
 		 if(RA%30==0)
-		 tik=12;
+		 {
+		 tik=parametry.zegar.tiki.dlugosc.trzydziesci;
+		 grubosc=parametry.zegar.tiki.grubosc.trzydziesci;
+		 }
 		 if(RA%60==0)
-		 tik=20;
+		 {
+		 tik=parametry.zegar.tiki.dlugosc.godzina;
+		 grubosc=parametry.zegar.tiki.grubosc.godzina;
+		 }
 		 
 		 
 		 
@@ -1336,20 +2033,67 @@ wsad+="\r\n\t<g id='nazwy_gwiazd'>"
 			   var kat=Math.atan2(kanwa.yres/2-my,mx-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
 			   kat=(kat<0)?360+kat:kat
 			 // console.log(kat) 
-		 wsad2+="\r\n\t\t <line x1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).x+" y1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).y+" x2="+mx+" y2="+my+"  stroke-width='1' stroke='#ffffff' />"
+		 wsad2+="\r\n\t\t <line x1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).x+" y1="+transform(RA/60,(parametry.deklinacja_min-parametry.skala_roczna.szerokosc)*1).y+" x2="+mx+" y2="+my+"  stroke-width='"+grubosc+"' stroke='#ffffff' />"
 		 if(RA%60==0)
 		 {
-		  mxp=((parametry.rozmiar_czcionki_godzinnej*13/20)/2+3)*coss(kat)
-		  myp=-((parametry.rozmiar_czcionki_godzinnej*13/20)/2+3)*sins(kat)
-		  wsad2+="\r\n\t\t <text text-anchor='middle' x='"+mx+"' y='"+my+"' transform='translate(0 "+((parametry.rozmiar_czcionki_godzinnej*13/20)/2)+") translate("+mxp+" "+myp+")'  style='font-family: Calabri; font-size: "+(parametry.rozmiar_czcionki_godzinnej)+"px; fill: #ffffff;' >"+(24-((RA/60-6<0)?RA/60+18:RA/60-6))+"</text>" //
+		 rozmiar_czcionki_G=parametry.rozmiar_czcionki_godzinnej*xres/(180+2*45)
+		  mxp=(rozmiar_czcionki_G/2)*coss(kat)
+		  myp=-(rozmiar_czcionki_G)/2*sins(kat)
+		  
+		  ctx.font=""+rozmiar_czcionki_G+"px Calabri";
+			   lineHeight=ctx.measureText('M').width*0.8;
+			   
+	
+			      var kata=Math.atan2(kanwa.yres/2-myp,mxp-kanwa.xres/2)*180/Math.PI //kąt w biegunowym układzie odniesieiani
+			   kata=(kat<0)?360+kat:kat
+			   
+			   	    mxpa=(lineHeight)*coss(kata)
+		        mypa=-(lineHeight)*sins(kata)
+		  
+		  
+		  //dominant-baseline='central' 
+		  wsad2+="\r\n\t\t <text text-anchor='middle'  x='"+mx+"' y='"+my+"' transform='translate("+mxp+" "+(myp+lineHeight/2)+")'  style='font-family: Calabri; font-size: "+rozmiar_czcionki_G+"px; fill: #ffffff;' >"+(24-((RA/60-6<=0)?RA/60+18:RA/60-6))+"</text>" //
 		 }
 		 
          }
 	    wsad2+="\r\n\t</g>"
+		wsad2+=skala_kolorow
+		wsad2+=skala_jasnosci
+		wsad2+=tytul
+		wsad2+=mglawice_legenda
+		wsad2+=linie_legenda
 	  //skala godzinna
-	  wsad2+="\r\n</svg>"
-	  wsad+="\r\n</svg> "+wsad2+" </td></tr></table>"
-	  wyswietl(wsad,"main")
+	   if(par.sama_mapa.checked==true)
+	    {
+		wsad0=wsad+"\r\n</svg> </td></tr></table>"
+		}
+		else
+		 if(par.sam_zegar.checked==true)
+	     {
+		  wsad0=wsad2+"\r\n</svg> </td></tr></table>"
+		 }
+		 else
+	   if(par.zegar_na_mapie.checked==false)
+	  {
+	   wsad2+="\r\n</svg>"
+	   wsad0+=wsad+"\r\n</svg> "+wsad2+" </td></tr>"
+	 /*  wsad0+="<tr><td><svg id='sk' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+skala_kolorow+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='sj' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+skala_jasnosci+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='ml' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+mglawice_legenda+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='ll' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+linie_legenda+"</svg></td></tr></table>"*/
+/*		wsad0+="<tr><td><svg id='sk' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+skala_kolorow+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='sj' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+skala_jasnosci+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='ml' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+mglawice_legenda+"</svg></td></tr>"
+	   wsad0+="<tr><td><svg id='ll' width='"+xres+"px' height='"+yres+"px' viewBox='0 0 "+xres+" "+yres+"'>\r\n"+linie_legenda+"</svg></td></tr></table>"*/
+	   }
+	   else{
+	   wsad0+=wsad+wsad2+"\r\n</svg></td></tr></table>"
+	   }
+	   
+	   
+	  // svgToPng(wsad+"\r\n</svg>",0,0)
+	   
+	  wyswietl(wsad0,"main")
 	 } 
    
      function opis(op,ha)
@@ -1582,7 +2326,7 @@ else
             y=odwzorowanie(tbl_g[i][0], tbl_g[i][1]).y
 	                     //6      3        (-1, 6)
 						 offset =1.2
-     		  rozmiar=pow((zasieg+offset-tbl_g[i][2]),1.3)  // jak zwiększyć kontrast??  kontrast zwiększony potengowaniem
+     		  rozmiar=pow((zasieg+offset-tbl_g[i][2])/(zasieg+offset),1.2)  // jak zwiększyć kontrast??  kontrast zwiększony potengowaniem
 			if(tbl_g[i][2]==-50)
 			 rozmiar=2
  
@@ -1656,7 +2400,7 @@ else
 	   	delayk2=new Date()
 		timestamp+="przed rys(gwiazdy) "+(delayk2.getTime()-pocz_del)/1000+"s <br>"
 	 rys(gwiazdy);
-	
+	 //saveSvg(document.getElementById('rys_svg'), 'test.svg')
 }	 		delayk1=new Date()
 		timestamp+="za rys(gwiazdy) "+(delayk1.getTime()-pocz_del)/1000+"s <br>"
      if(par.autorefresh.checked == true)
@@ -1843,6 +2587,7 @@ function contest(i)
 	{
   	 wyswietl("trwa generowanie mapy<br> proszę czekać","main")
 	stop();
+	rozmiary();
     	start();
 	return;
 	 }
@@ -1879,9 +2624,10 @@ function zero(pole)
  
 </script>
 <style type="text/css">
-   <!--
-   @import url("kolory.css");
-  -->
+   svg {
+  overflow: visible !important;
+}
+  
 </style>
 </head>
  <body onload='par_pocz(),rozmiary(),startuj()' bgcolor=cdf8ff style=" background-color: grey">
@@ -1889,11 +2635,11 @@ function zero(pole)
 
 	 <table border=0 cellspacing=0 cellpadding=0>
 	 	 <form name="par">
-		  
-	
-	 <tr><td colspan=3 align=center><a href="javascript:saveSvg(document.getElementById('rys_svg'), 'mapa.svg')"> zapisz mapę</a></td></tr>
+		 <tr><td colspan=3 align=center><a href="javascript:saveSvg(document.getElementById('rys_svg'), 'mapa.svg')"> zapisz mapę</a></td></tr>
 	 <tr><td colspan=3 align=center><a href="javascript: saveSvg(document.getElementById('rys_wierzch'), 'zegar.svg')"> zapisz wierzch </a></td></tr>
-	 <tr><td>rozdrielczosc </td><td><input type="number" name="resolution" size=5 maxlength=4/></td></tr>
+
+	 	 <tr><td>rozdrielczosc </td><td><input type="number" name="resolution" size=6 maxlength=5 value="7874" /></td></tr>
+		 
 	 <tr><td colspan=3 align=center>Data i czas</td></tr>
 	 <tr><td>rok</td><td>miesiąc</td><td>dzień</td></tr>
 	 <tr><td><input type="text" name="rok" size=4 maxlength=4/></td><td><input type="text" name="mies" size=2 maxlength=2/></td><td><input type="text" name="dzien" size=2 maxlength=2/></td></tr>
@@ -1930,7 +2676,12 @@ function zero(pole)
    <tr><td><input type="checkbox" name="slonce"></td><td>słonce </td></tr>
    <tr><td><input type="checkbox" name="ksiezyc"></td><td>księzyc</td></tr>
    <tr><td><input type="checkbox" name="proj_hor"></td><td> projekcja horyzontalna</td></tr>
+      <tr><td><input type="checkbox" name="zegar_na_mapie"></td><td> zegar na mapie</td></tr>
+	    <tr><td><input type="checkbox" name="sama_mapa"></td><td> sama mapa</td></tr>
+		  <tr><td><input type="checkbox" name="sam_zegar"></td><td> sam zegar</td></tr>
+
 	  </table>
+	  
 	  <br>  rec:<input type="text" name="rec" size=8 maxlength=8 />dec:<input type="text" name="dec" size=8 maxlength=8 /> 
    
   <br><a href="javascript:startuj()"> >>>>go<<<< </a>
